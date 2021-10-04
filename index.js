@@ -4,7 +4,6 @@ const cors = require("cors")
 const bearerToken = require("express-bearer-token")
 
 const { db } = require("./database")
-const { AuthRouter } = require("./routers")
 
 const PORT = 2000
 
@@ -24,7 +23,9 @@ app.get("/", (req, res) => {
   res.status(200).send("<h1>Welcome to Parcel API</h1>")
 })
 
+const { AuthRouter, adminProductRouter } = require("./routers")
 // ROUTER
 app.use("/auth", AuthRouter)
+app.use('/productAdmin', adminProductRouter)
 
 app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}/`))
