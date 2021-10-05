@@ -51,7 +51,10 @@ module.exports={
                 res.status(400).send(errEditProduct)
             }
             
-            let updateProduct = `select * from product where idproduct=${req.params.id}`
+            let updateProduct = `select * from product p
+            left join product_category c
+            on p.idproduct_category=c.idproduct_category
+            where idproduct=${req.params.id};`
             db.query(updateProduct, (errUpdateEditProduct, resUpdateEditProduct)=>{
                 if(errUpdateEditProduct){
                     console.log(errUpdateEditProduct)
@@ -59,6 +62,40 @@ module.exports={
                 }
                 res.status(200).send(resUpdateEditProduct)
             })
+        })
+
+    },
+
+    uploadEditProduct : (req,res)=>{
+        console.log(req.file)
+
+        if(!req.file){
+            res.status(400).send('NO FILE')
+        }
+        
+        let updatePhoto = `update product set product_image = '${req.file.filename}' where idproduct=${req.params.id};`
+        db.query(updatePhoto, (errUpdatePhoto, resUpdatePhoto)=>{
+            if(errUpdatePhoto){
+                console.log(errUpdatePhoto)
+                res.status(400).send(errUpdatePhoto)
+
+            }
+
+            let reUpdateProduct = `select * from product p
+            left join product_category c
+            on p.idproduct_category=c.idproduct_category
+            where idproduct=${req.params.id};`
+            db.query(reUpdateProduct, (errReUpdate, resReUpdate)=>{
+                if(errReUpdate){
+                    console.log(errReUpdate)
+                    res.status(400).send(errReUpdate)
+                }
+                let resultUpload = resReUpdate
+                resultUpload.push({success: true})
+                res.status(200).send(resultUpload)
+            })
+            
+
         })
 
     },
