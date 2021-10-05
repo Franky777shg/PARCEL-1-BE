@@ -13,7 +13,7 @@ module.exports = {
 
     jwt.verify(req.token, SECRET_KEY, (err, result) => {
       if (err) {
-        return res.status(401).send(err.message)
+        return res.status(401).send("Link Verifikasi sudah expired!")
       }
       req.payload = result
       next()
