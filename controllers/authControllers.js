@@ -84,9 +84,46 @@ module.exports = {
               html: `<p>Halo ${name}!,</p><br/><a href="http://localhost:3000/verify/${token}">Klik disini untuk verifikasi akun anda!</a>`, // html body
             })
 
-            res.status(200).send(`Registrasi Berhasil! Silahkan cek email ${email} untuk memverifikasi akun anda!`)
+            res
+              .status(201)
+              .send(
+                `Registrasi Berhasil! Silahkan cek email ${email} untuk memverifikasi akun anda!`
+              )
           }
         )
+      })
+    })
+  },
+  verify: (req, res) => {
+    const { idusers } = req.payload
+
+    const checkVerify = `
+    SELECT idusers, verify
+    FROM users
+    WHERE idusers=${db.escape(idusers)}
+    `
+
+    db.query(checkVerify, (errCheckVerify, resCheckVerify) => {
+      if (errCheckVerify) return res.status(500).send("Telah terjadi kesalahan pada server")
+
+      if (resCheckVerify.length === 0) {
+        return res.status(400).send("Akun tidak ditemukan")
+      }
+
+      if (resCheckVerify[0].verify === 1) {
+        return res.status(200).send("Akun anda sudah diverifikasi")
+      }
+
+      const verifyUser = `
+      UPDATE users
+      SET verify=1
+      WHERE idusers=${db.escape(idusers)}
+      `
+
+      db.query(verifyUser, (errVerifyUser, _resVerifyUser) => {
+        if (errVerifyUser) return res.status(500).send("Telah terjadi kesalahan pada server")
+
+        return res.status(200).send("Akun anda berhasil diverifikasi")
       })
     })
   },
