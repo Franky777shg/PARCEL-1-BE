@@ -123,8 +123,59 @@ module.exports = {
       db.query(verifyUser, (errVerifyUser, _resVerifyUser) => {
         if (errVerifyUser) return res.status(500).send("Telah terjadi kesalahan pada server")
 
-        return res.status(200).send("Akun anda berhasil diverifikasi")
+        res.status(200).send("Akun anda berhasil diverifikasi")
       })
+    })
+  },
+  login: (req, res) => {
+    // Hash Password
+    const { username, password = "" } = req.body
+    const hashPassword = crypto.createHmac("sha1", SECRET_KEY).update(password).digest("hex")
+
+    // Check Username dan Password
+    const checkUsernameAndPassword = `
+    SELECT u.idusers, username, password, role, verify, email, name, address, avatar, gender, age FROM users u
+    LEFT JOIN profile p ON u.idusers=p.idusers
+    WHERE username=${db.escape(username)} AND password=${db.escape(hashPassword)}
+    `
+
+    db.query(checkUsernameAndPassword, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(404).send("Username / Kata Sandi Salah!")
+
+      const userData = result[0]
+
+      // Check Verify
+      if (userData.verify !== 1) return res.status(403).send("Akun anda belum diverifikasi!")
+
+      delete userData.verify
+      delete userData.password
+
+      const { idusers } = userData
+
+      const token = createToken({
+        idusers,
+      })
+
+      res.status(200).send({ user: userData, token })
+    })
+  },
+  keepLogin: (req, res) => {
+    const { idusers } = req.payload
+
+    const keepLogin = `
+    SELECT u.idusers, username, role, email, name, address, avatar, gender, age FROM users u
+    LEFT JOIN profile p ON u.idusers=p.idusers
+    WHERE u.idusers=${db.escape(idusers)}
+    `
+
+    db.query(keepLogin, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      const userData = result[0]
+
+      return res.status(200).send(userData)
     })
   },
 }
