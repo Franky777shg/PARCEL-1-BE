@@ -178,4 +178,62 @@ module.exports = {
       return res.status(200).send(userData)
     })
   },
+  forgotPassword: (req, res) => {
+    const { email } = req.body
+
+    const forgotPassword = `
+    SELECT idusers, email, name
+    FROM profile
+    WHERE email=${db.escape(email)}
+    `
+
+    db.query(forgotPassword, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(404).send("Email tidak ditemukan!")
+
+      const { idusers, name } = result[0]
+
+      const token = createToken({
+        idusers,
+      })
+
+      transporter.sendMail({
+        from: '"Admin ADJ Parcel" <adjparcel@gmail.com>', // sender address
+        to: `${email}`, // list of receivers
+        subject: `Permintaan Lupa Kata Sandi untuk akun ${name}`, // Subject line
+        html: `<p>Halo ${name}!, kamu baru saja meminta lupa kata sandi</p><br/><p>Link ini berlaku untuk 5 jam!</p><br /><a href="http://localhost:3000/reset-password/${token}">Klik disini untuk mereset ulang kata sandi anda!</a>`, // html body
+      })
+
+      res
+        .status(200)
+        .send(
+          `Permintaan Lupa Kata Sandi Sukses! Silahkan cek email ${email} untuk mereset ulang kata sandi akun anda!`
+        )
+    })
+  },
+  resetPassword: (req, res) => {
+    const { idusers } = req.payload
+    const { password = "" } = req.body
+
+    if (password === "") return res.status(400).send("Mohon masukkan seluruh data!")
+
+    const hashPassword = crypto.createHmac("sha1", SECRET_KEY).update(password).digest("hex")
+
+    const resetPassword = `
+    UPDATE users
+    SET password=${db.escape(hashPassword)}
+    WHERE idusers=${db.escape(idusers)}
+    `
+
+    db.query(resetPassword, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      res
+        .status(200)
+        .send(
+          `Kata sandi anda berhasil diubah! Silahkan masuk untuk melanjutkan sesi anda!`
+        )
+    })
+  },
 }
