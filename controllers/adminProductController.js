@@ -2,18 +2,6 @@ const {db} = require('../database')
 
 module.exports={
 
-    //getAllProduct by Admin
-    getProduct : (req,res)=>{
-        let getProduct = 'select * from product'
-        db.query(getProduct, (errGetProduct, resGetProduct)=>{
-            if(errGetProduct){
-                console.log(errGetProduct)
-                res.status(400).send(errGetProduct)
-            }
-            res.status(200).send(resGetProduct)
-        })
-    },
-
     //get product by id 
     getProductId : (req,res)=>{
         let getProductId = `select * from product p
@@ -66,6 +54,7 @@ module.exports={
 
     },
 
+    //upload product
     uploadEditProduct : (req,res)=>{
         console.log(req.file)
 
@@ -100,17 +89,95 @@ module.exports={
 
     },
 
-    //getAllParcel by Admin
-    getParcel : (req, res)=>{
-        let getParcel = `select * from parcel`
-        db.query(getParcel, (errGetParcel, resGetParcel)=>{
-            if(errGetParcel){
-                console.log(errGetParcel)
-                res.status(400).send(errGetParcel)
+    //add product
+    addProduct :(req,res)=>{
+        const {idproduct_category, name, desc, capital, price, stock} = req.body
+        // console.log(req.file)
+        console.log(req.body)
+
+
+        // if(!req.file){
+        //     res.status(400).send('NO FILE')
+        // }
+
+        if(!idproduct_category || !name || !desc || !capital ||!price || !stock){
+            res.status(400).send("data belum lengkap")
+        }
+
+        let inputProduct = `insert into product(idproduct_category,product_image, product_name, product_desc, product_capital, product_price, product_stock) values(${db.escape(idproduct_category)},"gambar", ${db.escape(name)}, ${db.escape(desc)}, ${db.escape(capital)}, ${db.escape(price)}, ${db.escape(stock)});`
+
+        db.query(inputProduct,(errInput, resInput)=>{
+            if(errInput){
+                console.log(errInput)
+                res.status(400).send(errInput)
             }
-            res.status(200).send(resGetParcel)
+            let getIdProduct = `select idproduct from product where product_name=${db.escape(name)}`
+            db.query(getIdProduct, (errGetId, resGetId)=>{
+                if(errGetId){
+                    console.log(errGetId)
+                    res.status(400).send(errGetId)
+                }
+                res.status(200).send(resGetId[0])
+            })
+        })
+
+    },
+
+    //get product with pagination
+    getProductPagination : (req,res)=>{
+        const currentPage =parseInt(req.params.page) || 1
+
+        const perPage = parseInt(req.params.perPage) ||9
+
+        let totalProducts
+
+        let countProducts = 'select count(*) as totalItems from product'
+        db.query(countProducts, (errCount, resCount)=>{
+            if(errCount){
+                res.status(400).send(errCount)
+            }
+            totalProducts =resCount[0]
+            let getData = `select * from product limit ${db.escape((currentPage-1)*perPage)}, ${db.escape(perPage)} `
+    
+            db.query(getData, (errGetData, resGetData)=>{
+                if(errGetData){
+                    res.status(400).send(errGetData)
+                }
+                let result =[]
+                result.push(resGetData,{current :currentPage}, {perpage :perPage}, totalProducts)
+                res.status(200).send(result)
+            })
         })
     },
+
+    //get Parcel with pagination
+    getParcelPagination : (req,res)=>{
+        const currenParcelPage = parseInt(req.params.page) || 1
+        
+        const parcelPerPage = parseInt(req.params.perPage) || 6
+
+        let totalParcels
+
+        let countParcel = `select count(*) as totalItems from parcel`
+        db.query(countParcel, (errCountParcel, resCountParcel)=>{
+            if(errCountParcel){
+                res.status(400).send(errCountParcel)
+            }
+            totalParcels = resCountParcel[0]
+
+            let getParcel = `select * from parcel limit ${db.escape((currenParcelPage-1)*parcelPerPage)}, ${db.escape(parcelPerPage)}`
+
+            db.query(getParcel, (errGetParcel, resGetParcel)=>{
+                if(errGetParcel){
+                    res.status(400).send(errGetParcel)
+                }
+                let result =[]
+                result.push(resGetParcel, {current : currenParcelPage}, {perpage : parcelPerPage}, totalParcels)
+
+                res.status(200).send(result)
+            })
+        })
+    }
     
 
 }

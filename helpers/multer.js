@@ -2,9 +2,12 @@ const multer = require("multer")
 const path = require("path")
 
 module.exports={
-    uploadEditProduct : ()=>{
+    upload : (req,res)=>{
+        // console.log(req)
         let storage = multer.diskStorage({
-            destination: path.join(path.resolve("public"),`uploads/products`),
+            destination: (req,file, cb)=>{
+                cb(null,path.join(path.resolve("public"),`uploads/${req.params.type}`) )
+            },
             filename: (req, file, cb)=>{
                 cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
             }
