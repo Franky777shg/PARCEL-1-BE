@@ -2,14 +2,15 @@ const router = require('express').Router()
 
 const {adminProductController} = require('../controllers/index')
 
-const {uploadEditProduct}= require('../helpers/multer')
-const uploadEditProd = uploadEditProduct()
+const {upload}= require('../helpers/multer')
+const uploader = upload()
 
-router.get('/getProductAdmin', adminProductController.getProduct)
-router.get('/getParcelAdmin', adminProductController.getParcel)
 router.get('/getProductId/:id', adminProductController.getProductId)
 router.get('/productCategories', adminProductController.getProductCategories)
 router.post('/editProduct/:id',  adminProductController.editProduct)
-router.post('/editUploadProduct/:id', uploadEditProd, adminProductController.uploadEditProduct)
+router.post('/editUploadProduct/:id/:type', uploader, adminProductController.uploadEditProduct)
+router.post('/addProductAdmin', adminProductController.addProduct )
+router.get(`/getProductPerPage/:page`, adminProductController.getProductPagination)
+router.get('/getParcelPerPage/:page', adminProductController.getParcelPagination)
 
 module.exports= router
