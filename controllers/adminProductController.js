@@ -177,6 +177,43 @@ module.exports={
                 res.status(200).send(result)
             })
         })
+    },
+
+    //delete Product
+    deleteProduct :(req,res)=>{
+        const productName = req.params.name
+        let deleteProduct= `delete from product where idproduct = ${db.escape(req.params.id)}`
+
+        db.query(deleteProduct, (errDeleteProduct, resDeleteProduct)=>{
+            if(errDeleteProduct){
+                console.log(errDeleteProduct)
+                res.status(400).send(errDeleteProduct)
+            }
+
+            const currentPage =parseInt(req.params.page) || 1
+
+            const perPage = parseInt(req.params.perPage) ||9
+
+            let totalProducts
+
+            let countProducts = 'select count(*) as totalItems from product'
+            db.query(countProducts, (errCount, resCount)=>{
+            if(errCount){
+                res.status(400).send(errCount)
+            }
+            totalProducts =resCount[0]
+            let getData = `select * from product limit ${db.escape((currentPage-1)*perPage)}, ${db.escape(perPage)} `
+    
+            db.query(getData, (errGetData, resGetData)=>{
+                if(errGetData){
+                    res.status(400).send(errGetData)
+                }
+                let result =[]
+                result.push(resGetData,{current :currentPage}, {perpage :perPage}, totalProducts, {caption :`${productName} berhasil dihapus`})
+                res.status(200).send(result)
+            })
+        })
+        })
     }
     
 
