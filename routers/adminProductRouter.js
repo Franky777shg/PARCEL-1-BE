@@ -12,5 +12,6 @@ router.post('/editUploadProduct/:id/:type', uploader, adminProductController.upl
 router.post('/addProductAdmin', adminProductController.addProduct )
 router.get(`/getProductPerPage/:page`, adminProductController.getProductPagination)
 router.get('/getParcelPerPage/:page', adminProductController.getParcelPagination)
+router.get('/deleteProduct/:id/:page/:name', adminProductController.deleteProduct)
 
 module.exports= router
