@@ -68,12 +68,6 @@ module.exports = {
     const { idusers } = orderData
     const { idparcel, parcel_qty, parcelContents } = orderDetailData
 
-    productList = []
-    parcelContents.map((product) => {
-      const { idProduct } = product
-      return productList.push(idProduct)
-    })
-
     // Generate Order Status Cart
     orderData.idorder_status = 1
 
