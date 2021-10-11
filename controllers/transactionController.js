@@ -63,6 +63,26 @@ module.exports = {
       return res.status(200).send(parcelProductData)
     })
   },
+  checkStock: (req, res) => {
+    const { parcelContents } = req.body.orderDetailData
+    const checkProductQty = `
+    SELECT *
+    FROM product
+    WHERE idproduct=?
+    `
+
+    parcelContents.map((product) => {
+      const { idProduct, qty, productName } = product
+      db.query(checkProductQty, idProduct, (errCheckStock, resCheckStock) => {
+        const currentStock = resCheckStock[0].product_stock
+        if (currentStock === 0) {
+          return res.status(400).send(`Oops, Produk ${productName} sudah habis!`)
+        } else if (qty > currentStock) {
+          return res.status(400).send(`Oops, Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi `)
+        }
+      })
+    })
+  },
   newOrder: (req, res) => {
     const { orderData, orderDetailData } = req.body
     const { idusers } = orderData
