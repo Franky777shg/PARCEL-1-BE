@@ -135,39 +135,32 @@ module.exports = {
           }
 
           // Generate order detail data
-          const orderDetail = {
-            idorder,
-            idparcel,
-            parcel_no,
-            parcel_qty,
-          }
+          const orderDetail = [idorder, idparcel, parcel_no, parcel_qty]
+
+          // Mapping value data product untuk insert order detail
+          parcelContentData = parcelContents.map((product) => [
+            ...orderDetail,
+            product.idProduct,
+            product.qty,
+            product.idCategory,
+          ])
 
           // Query insert order detail
           const insertOrderDetail = `
-          INSERT INTO order_detail
-          SET ?
+          INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
+          VALUES ?
           `
 
-          // Mapping data product untuk insert order detail
-          parcelContents.map((product) => {
-            const newOrderDetail = {
-              ...orderDetail,
-              idproduct: product.idProduct,
-              product_qty: product.qty,
-              idproduct_category: product.idCategory,
+          db.query(
+            insertOrderDetail,
+            [parcelContentData],
+            (errInsertOrderDetail, resInsertOrderDetail) => {
+              if (errInsertOrderDetail)
+                return res.status(500).send("Terjadi kesalahan pada server!")
+              // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
+              return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
             }
-            db.query(
-              insertOrderDetail,
-              newOrderDetail,
-              (errInsertOrderDetail, resInsertOrderDetail) => {
-                if (errInsertOrderDetail)
-                  return res.status(500).send("Terjadi kesalahan pada server")
-              }
-            )
-          })
-
-          // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
-          return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
+          )
         })
       } else {
         // Jika user tidak punya order dengan status cart
@@ -190,39 +183,31 @@ module.exports = {
           let parcel_no = 1
 
           // Generate order detail data
-          const orderDetail = {
-            idorder,
-            idparcel,
-            parcel_qty,
-            parcel_no,
-          }
+          const orderDetail = [idorder, idparcel, parcel_qty, parcel_no]
+
+          parcelContentData = parcelContents.map((product) => [
+            ...orderDetail,
+            product.idProduct,
+            product.qty,
+            product.idCategory,
+          ])
 
           // Query insert order detail
           const insertOrderDetail = `
-          INSERT INTO order_detail
-          SET ?
+          INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
+          VALUES ?
           `
 
-          // Mapping data product untuk insert order detail
-          parcelContents.map((product) => {
-            const newOrderDetail = {
-              ...orderDetail,
-              idproduct: product.idProduct,
-              product_qty: product.qty,
-              idproduct_category: product.idCategory,
+          db.query(
+            insertOrderDetail,
+            [parcelContentData],
+            (errInsertOrderDetail, resInsertOrderDetail) => {
+              if (errInsertOrderDetail)
+                return res.status(500).send("Terjadi kesalahan pada server!")
+              // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
+              return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
             }
-            db.query(
-              insertOrderDetail,
-              newOrderDetail,
-              (errInsertOrderDetail, resInsertOrderDetail) => {
-                if (errInsertOrderDetail)
-                  return res.status(500).send("Terjadi kesalahan pada server")
-              }
-            )
-          })
-
-          // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
-          return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
+          )
         })
       }
     })
