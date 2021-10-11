@@ -216,32 +216,7 @@ module.exports={
         })
     },
 
-    // addParcel : (req,res)=>{
-    //     const {nama, price,desc} = req.body
-
-    //     let addParcel = `insert into parcel (parcel_name, parcel_price, parcel_desc) values (${db.escape(nama)}, ${db.escape(price)}, ${db.escape(desc)})`
-
-    //     db.query(addParcel, (errA, resA)=>{
-    //         if(errA){
-    //             console.log(errA)
-    //             res.status(400).send(errA)
-    //         }
-
-    //         let getIdParcel = `select idparcel from parcel where parcel_name = ${db.escape(nama)}`
-
-    //         db.query(getIdParcel, (errB, resB)=>{
-    //             if(errB){
-    //                 console.log(errB)
-    //                 res.status(400).send(errB)
-    //             }
-    //             let idparcel = resB[0]
-    //             res.status(200).send(idparcel)
-
-    //         })
-    //     })
-    // }
-
-
+    
     //add parcel
     addParcel:(req,res)=>{
         const { nama, price, desc} = req.body
