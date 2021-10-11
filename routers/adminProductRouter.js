@@ -13,5 +13,10 @@ router.post('/addProductAdmin', adminProductController.addProduct )
 router.get(`/getProductPerPage/:page`, adminProductController.getProductPagination)
 router.get('/getParcelPerPage/:page', adminProductController.getParcelPagination)
 router.get('/deleteProduct/:id/:page/:name', adminProductController.deleteProduct)
+router.post('/addParcel', adminProductController.addParcel)
+router.post('/addParcelItens', adminProductController.newDetail)
+router.get('/mainCategories', adminProductController.mainCategories)
+router.get('/subCategories/:id', adminProductController.subCategories)
+router.post('/uploadParcel/:id/:type', uploader, adminProductController.uploadParcel)
 
 module.exports= router
