@@ -23,9 +23,10 @@ app.get("/", (req, res) => {
   res.status(200).send("<h1>Welcome to Parcel API</h1>")
 })
 
-const { AuthRouter, adminProductRouter } = require("./routers")
+const { AuthRouter, adminProductRouter, transactionRouter } = require("./routers")
 // ROUTER
 app.use("/auth", AuthRouter)
 app.use('/productAdmin', adminProductRouter)
+app.use('/transaction', transactionRouter)
 
 app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}/`))
