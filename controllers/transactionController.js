@@ -78,7 +78,9 @@ module.exports = {
         if (currentStock === 0) {
           return res.status(400).send(`Oops, Produk ${productName} sudah habis!`)
         } else if (qty > currentStock) {
-          return res.status(400).send(`Oops, Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi `)
+          return res
+            .status(400)
+            .send(`Oops, Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi `)
         }
       })
     })
@@ -87,6 +89,10 @@ module.exports = {
     const { orderData, orderDetailData } = req.body
     const { idusers } = orderData
     const { idparcel, parcel_qty, parcelContents } = orderDetailData
+
+    if (parcelContents.length === 0) {
+      return res.status(400).send("Oops, isi parselmu masih kosong!")
+    }
 
     // Generate Order Status Cart
     orderData.idorder_status = 1
