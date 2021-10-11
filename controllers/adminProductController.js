@@ -214,7 +214,133 @@ module.exports={
             })
         })
         })
+    },
+
+    // addParcel : (req,res)=>{
+    //     const {nama, price,desc} = req.body
+
+    //     let addParcel = `insert into parcel (parcel_name, parcel_price, parcel_desc) values (${db.escape(nama)}, ${db.escape(price)}, ${db.escape(desc)})`
+
+    //     db.query(addParcel, (errA, resA)=>{
+    //         if(errA){
+    //             console.log(errA)
+    //             res.status(400).send(errA)
+    //         }
+
+    //         let getIdParcel = `select idparcel from parcel where parcel_name = ${db.escape(nama)}`
+
+    //         db.query(getIdParcel, (errB, resB)=>{
+    //             if(errB){
+    //                 console.log(errB)
+    //                 res.status(400).send(errB)
+    //             }
+    //             let idparcel = resB[0]
+    //             res.status(200).send(idparcel)
+
+    //         })
+    //     })
+    // }
+
+
+    //add parcel
+    addParcel:(req,res)=>{
+        const { nama, price, desc} = req.body
+
+        let addParcel = `insert into parcel (parcel_name, parcel_price, parcel_desc, parcel_image) values (${db.escape(nama)}, ${db.escape(price)}, ${db.escape(desc)}, '00000.jpg'); `
+
+        db.query(addParcel, (errAddParcel, resAddParcel)=>{
+            if(errAddParcel){
+                console.log(errAddParcel)
+                res.status(400).send(errAddParcel)
+            }
+                
+            let newParcel = `select idparcel from parcel where parcel_name=${db.escape(nama)}`
+            db.query(newParcel, (errParc, resParc)=>{
+                if(errParc){
+                res.status(400).send(errParc)
+                }
+                    res.status(200).send(resParc)
+                })
+             
+        })
+    },
+
+    //insert new Parcel_detail
+    newDetail:(req,res)=>{
+        const {parcelDetail}= req.body
+
+        let itemInput = parcelDetail.map(item => [item.idparcel, item.idproduct_category, item.qty_parcel_category])
+
+        let ins = `insert into parcel_detail (idparcel, idproduct_category, qty_parcel_category) values ?`
+        db.query(ins, [itemInput], (errS, resS)=>{
+            if(errS){
+                console.log(errS)
+                res.status(400).send(errS)
+            }
+            
+            let nPc = 'select * from parcel'
+            db.query(nPc, (errN, resN)=>{
+                if(errN){
+                    console.log(errN)
+                    res.status(400).send(errN)
+                }
+                res.status(200).send(resN)
+            })
+        })
+
+
+    },
+
+    //mainCategories
+    mainCategories:(req,res)=>{
+        let main =`select * from product_category order by idproduct_category limit 1,6;`
+        db.query(main, (errMain, resMain)=>{
+            if(errMain){
+                console.log(errMain)
+                res.status(400).send(errMain)
+            }
+            res.status(200).send(resMain)
+        })
+    },
+
+    //subcategories by main Id
+    subCategories : (req,res)=>{
+        let subCategory = `select e.idproduct_category, e.category_name, p.idproduct_category, p.parentID , p.category_name from product_category e
+        inner join product_category p
+        on e.idproduct_category=p.parentID
+        where p.parentID=${req.params.id};`
+
+        db.query(subCategory, (errSub, resSub)=>{
+            if(errSub){
+                console.log(errSub)
+                res.status(400).send(errSub)
+            }
+            res.status(200).send(resSub)
+        })
+    },
+
+
+    uploadParcel :(req,res)=>{
+        console.log(req.file)
+
+        if(!req.file){
+            res.status(400).send('NO FILE')
+        }
+        
+        let updatePhotoParcel = `update parcel set parcel_image = '${req.file.filename}' where idparcel=${req.params.id};
+        `
+        db.query(updatePhotoParcel, (errParc, resParc)=>{
+            if(errParc){
+                console.log(errParc)
+                res.status(400).send(errParc)
+            }
+            select = [true, "Parcel Berhasil ditambahkan"]
+            res.status(200).send(select)
+        })
     }
+
+
+
     
 
 }
