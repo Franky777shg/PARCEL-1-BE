@@ -63,28 +63,6 @@ module.exports = {
       return res.status(200).send(parcelProductData)
     })
   },
-  checkStock: (req, res) => {
-    const { parcelContents } = req.body.orderDetailData
-    const checkProductQty = `
-    SELECT *
-    FROM product
-    WHERE idproduct=?
-    `
-
-    parcelContents.map((product) => {
-      const { idProduct, qty, productName } = product
-      db.query(checkProductQty, idProduct, (errCheckStock, resCheckStock) => {
-        const currentStock = resCheckStock[0].product_stock
-        if (currentStock === 0) {
-          return res.status(400).send(`Oops, Produk ${productName} sudah habis!`)
-        } else if (qty > currentStock) {
-          return res
-            .status(400)
-            .send(`Oops, Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi `)
-        }
-      })
-    })
-  },
   newOrder: (req, res) => {
     const { orderData, orderDetailData } = req.body
     const { idusers } = orderData
@@ -94,122 +72,163 @@ module.exports = {
       return res.status(400).send("Oops, isi parselmu masih kosong!")
     }
 
-    // Generate Order Status Cart
-    orderData.idorder_status = 1
+    let outputQty = []
 
-    // Query Check Order User dengan status Cart
-    const checkUserCart = `
+    const checkQty = `
     SELECT *
-    FROM \`order\`
-    WHERE idusers=${db.escape(idusers)} AND idorder_status=1
+    FROM product
+    WHERE idproduct=?
     `
 
-    db.query(checkUserCart, (errCheckUserCart, resCheckUserCart) => {
-      if (errCheckUserCart) return res.status(500).send("Terjadi kesalahan pada server")
+    const parcelContentsLastIndex = parcelContents.length - 1
 
-      // Jika user masih memiliki order dengan status cart
-      if (resCheckUserCart.length !== 0) {
-        const { idorder } = resCheckUserCart[0]
+    const resTemp = []
+    parcelContents.map((product, index) => {
+      const { idProduct, qty, productName } = product
 
-        // Check parsel yang sama dalam cart
-        const checkParcelExist = `
-        SELECT *
-        FROM order_detail
-        WHERE idorder=${db.escape(idorder)} AND idparcel=${db.escape(idparcel)}
-        `
-
-        db.query(checkParcelExist, (errCheckParcelExist, resCheckParcelExist) => {
-          if (errCheckParcelExist) return res.status(500).send("Terjadi kesalahan pada server")
-
-          // Generate Parcel No Baru
-          let parcel_no = 1
-
-          // Jumlah hasil query order_detail
-          const parcelExistLength = resCheckParcelExist.length
-
-          // Jika ada parsel yang sama dalam cart
-          if (parcelExistLength !== 0) {
-            // Generate parcel no baru
-            const newParcelNo = resCheckParcelExist[parcelExistLength - 1].parcel_no + 1
-            parcel_no = newParcelNo
-          }
-
-          // Generate order detail data
-          const orderDetail = [idorder, idparcel, parcel_no, parcel_qty]
-
-          // Mapping value data product untuk insert order detail
-          parcelContentData = parcelContents.map((product) => [
-            ...orderDetail,
-            product.idProduct,
-            product.qty,
-            product.idCategory,
-          ])
-
-          // Query insert order detail
-          const insertOrderDetail = `
-          INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
-          VALUES ?
-          `
-
-          db.query(
-            insertOrderDetail,
-            [parcelContentData],
-            (errInsertOrderDetail, resInsertOrderDetail) => {
-              if (errInsertOrderDetail)
-                return res.status(500).send("Terjadi kesalahan pada server!")
-              // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
-              return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
-            }
-          )
-        })
-      } else {
-        // Jika user tidak punya order dengan status cart
-        // Generate No Order baru
-        const newOrderNumber = Date.now()
-        orderData.order_number = newOrderNumber
-
-        // Query Generate Order Baru
-        const insertOrderData = `
-        INSERT INTO \`order\`
-        SET ?
-        `
-
-        db.query(insertOrderData, orderData, (errInsertOrderData, resInsertOrderData) => {
-          if (errInsertOrderData) return res.status(500).send("Terjadi kesalahan pada server")
-
-          const idorder = resInsertOrderData.insertId
-
-          // Generate Parcel No Baru
-          let parcel_no = 1
-
-          // Generate order detail data
-          const orderDetail = [idorder, idparcel, parcel_qty, parcel_no]
-
-          parcelContentData = parcelContents.map((product) => [
-            ...orderDetail,
-            product.idProduct,
-            product.qty,
-            product.idCategory,
-          ])
-
-          // Query insert order detail
-          const insertOrderDetail = `
-          INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
-          VALUES ?
-          `
-
-          db.query(
-            insertOrderDetail,
-            [parcelContentData],
-            (errInsertOrderDetail, resInsertOrderDetail) => {
-              if (errInsertOrderDetail)
-                return res.status(500).send("Terjadi kesalahan pada server!")
-              // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
-              return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
-            }
-          )
-        })
+      const pushResTemp = (item) => {
+        resTemp.push(item)
       }
+
+      db.query(checkQty, idProduct, (errQty, resQty) => {
+        const currentStock = resQty[0].product_stock
+        if (currentStock === 0) {
+          pushResTemp({
+            error: true,
+            message: `Produk ${productName} habis. Mohon hapus dari isi parsel anda`,
+          })
+        } else if (qty > currentStock) {
+          pushResTemp({
+            error: true,
+            message: `Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi stok anda`,
+          })
+        }
+        if (index === parcelContentsLastIndex) {
+          setResultQty(resTemp)
+        }
+      })
     })
+
+    const setResultQty = (resultQty) => {
+      if (resultQty.length !== 0) return res.status(400).send(resultQty)
+
+      // Generate Order Status Cart
+      orderData.idorder_status = 1
+
+      // Query Check Order User dengan status Cart
+      const checkUserCart = `
+      SELECT *
+      FROM \`order\`
+      WHERE idusers=${db.escape(idusers)} AND idorder_status=1
+      `
+
+      db.query(checkUserCart, (errCheckUserCart, resCheckUserCart) => {
+        if (errCheckUserCart) return res.status(500).send("Terjadi kesalahan pada server")
+
+        // Jika user masih memiliki order dengan status cart
+        if (resCheckUserCart.length !== 0) {
+          const { idorder } = resCheckUserCart[0]
+
+          // Check parsel yang sama dalam cart
+          const checkParcelExist = `
+          SELECT *
+          FROM order_detail
+          WHERE idorder=${db.escape(idorder)} AND idparcel=${db.escape(idparcel)}
+          `
+
+          db.query(checkParcelExist, (errCheckParcelExist, resCheckParcelExist) => {
+            if (errCheckParcelExist) return res.status(500).send("Terjadi kesalahan pada server")
+
+            // Generate Parcel No Baru
+            let parcel_no = 1
+
+            // Jumlah hasil query order_detail
+            const parcelExistLength = resCheckParcelExist.length
+
+            // Jika ada parsel yang sama dalam cart
+            if (parcelExistLength !== 0) {
+              // Generate parcel no baru
+              const newParcelNo = resCheckParcelExist[parcelExistLength - 1].parcel_no + 1
+              parcel_no = newParcelNo
+            }
+
+            // Generate order detail data
+            const orderDetail = [idorder, idparcel, parcel_no, parcel_qty]
+
+            // Mapping value data product untuk insert order detail
+            parcelContentData = parcelContents.map((product) => [
+              ...orderDetail,
+              product.idProduct,
+              product.qty,
+              product.idCategory,
+            ])
+
+            // Query insert order detail
+            const insertOrderDetail = `
+            INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
+            VALUES ?
+            `
+
+            db.query(
+              insertOrderDetail,
+              [parcelContentData],
+              (errInsertOrderDetail, resInsertOrderDetail) => {
+                if (errInsertOrderDetail)
+                  return res.status(500).send("Terjadi kesalahan pada server!")
+                // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
+                return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
+              }
+            )
+          })
+        } else {
+          // Jika user tidak punya order dengan status cart
+          // Generate No Order baru
+          const newOrderNumber = Date.now()
+          orderData.order_number = newOrderNumber
+
+          // Query Generate Order Baru
+          const insertOrderData = `
+          INSERT INTO \`order\`
+          SET ?
+          `
+
+          db.query(insertOrderData, orderData, (errInsertOrderData, resInsertOrderData) => {
+            if (errInsertOrderData) return res.status(500).send("Terjadi kesalahan pada server")
+
+            const idorder = resInsertOrderData.insertId
+
+            // Generate Parcel No Baru
+            let parcel_no = 1
+
+            // Generate order detail data
+            const orderDetail = [idorder, idparcel, parcel_qty, parcel_no]
+
+            parcelContentData = parcelContents.map((product) => [
+              ...orderDetail,
+              product.idProduct,
+              product.qty,
+              product.idCategory,
+            ])
+
+            // Query insert order detail
+            const insertOrderDetail = `
+            INSERT INTO order_detail (idorder, idparcel, parcel_no, parcel_qty, idproduct, product_qty, idproduct_category)
+            VALUES ?
+            `
+
+            db.query(
+              insertOrderDetail,
+              [parcelContentData],
+              (errInsertOrderDetail, resInsertOrderDetail) => {
+                if (errInsertOrderDetail)
+                  return res.status(500).send("Terjadi kesalahan pada server!")
+                // Kirim notfikasi berhasil menambahkan parsel ke dalam cart setelah mapping selesai
+                return res.status(201).send("Berhasil menambahkan parsel ke dalam cart!")
+              }
+            )
+          })
+        }
+      })
+    }
   },
 }
