@@ -230,4 +230,197 @@ module.exports = {
       })
     }
   },
+  getUserCart: (req, res) => {
+    const { idusers } = req.payload
+    const CART = 1
+
+    const getIdOrderOnCart = `
+    SELECT idorder
+    FROM \`order\`
+    WHERE idusers=${db.escape(idusers)}
+    AND idorder_status=${db.escape(CART)}
+    `
+
+    db.query(getIdOrderOnCart, (errGetIdOrder, resGetIdOrder) => {
+      if (errGetIdOrder) {
+        return res.status(500).send("Terjadi kesalahan pada server!")
+      }
+
+      if (resGetIdOrder.length === 0) {
+        return res.status(400).send("Keranjang Belanjamu masih kosong!")
+      }
+
+      const idOrder = resGetIdOrder[0].idorder
+
+      const getTotalParcelOnCart = `
+      SELECT count(*) as totalParcel FROM \`order\` o
+      LEFT JOIN (
+        SELECT DISTINCT idorder, idparcel, parcel_no FROM order_detail
+      )
+      od ON o.idorder=od.idorder
+      WHERE o.idorder=${db.escape(idOrder)};
+      `
+
+      db.query(getTotalParcelOnCart, (errGetTotalParcel, resGetTotalParcel) => {
+        if (errGetTotalParcel) {
+          return res.status(500).send("Terjadi kesalahan pada server!")
+        }
+
+        if (resGetTotalParcel.length === 0) {
+          return res.status(400).send("Keranjang belanjamu masih kosong")
+        }
+
+        const totalParcel = resGetTotalParcel[0].totalParcel
+
+        const getCartItems = `
+        SELECT 
+            od.idparcel,
+            od.idorder_detail,
+            p.parcel_name,
+            p.parcel_price,
+            parcel_no,
+            parcel_qty,
+            GROUP_CONCAT(od.idproduct) as idProducts,
+            GROUP_CONCAT(product_qty) as qtyProducts,
+            GROUP_CONCAT(od.idproduct_category) as idCategories,
+            GROUP_CONCAT(prod.product_name) as nameProducts,
+            GROUP_CONCAT(pc.category_name) as labelCategories
+        FROM
+            order_detail od
+        LEFT JOIN parcel p ON od.idparcel=p.idparcel
+        LEFT JOIN product prod ON od.idproduct=prod.idproduct
+        LEFT JOIN product_category pc ON od.idproduct_category=pc.idproduct_category
+        WHERE
+            idorder = ${db.escape(idOrder)}
+        GROUP BY od.idparcel , parcel_no;
+        `
+
+        db.query(getCartItems, (errGetCartItems, resGetCartItems) => {
+          if (errGetCartItems) {
+            return res.status(500).send("Terjadi kesalahan pada server!")
+          }
+
+          if (resGetCartItems.length === 0) {
+            return res.status(400).send("Keranjang belanjamu masih kosong")
+          }
+
+          const cartItems = resGetCartItems.map((cartItem, idx) => {
+            let parcelDetailTemp = []
+            cartItem.idProducts.split(",").map((idProduct, idx) => {
+              parcelDetailTemp.push({ no: idx + 1, id: parseInt(idProduct) })
+            })
+            cartItem.qtyProducts.split(",").map((qtyProduct, idx) => {
+              parcelDetailTemp[idx].qty = parseInt(qtyProduct)
+            })
+            cartItem.idCategories.split(",").map((idCategory, idx) => {
+              parcelDetailTemp[idx].idCategory = parseInt(idCategory)
+            })
+            cartItem.nameProducts.split(",").map((nameProduct, idx) => {
+              parcelDetailTemp[idx].name = nameProduct
+            })
+            cartItem.labelCategories.split(",").map((category, idx) => {
+              parcelDetailTemp[idx].category = category
+            })
+            return {
+              parcelData: {
+                idOrder,
+                idCartItem: cartItem.idorder_detail,
+                idParcel: cartItem.idparcel,
+                parcelName: cartItem.parcel_name,
+                parcelNo: cartItem.parcel_no,
+                parcelPrice: cartItem.parcel_price,
+                qtyParcel: cartItem.parcel_qty,
+                totalPrice: cartItem.parcel_price * cartItem.parcel_qty,
+              },
+              parcelDetail: parcelDetailTemp,
+            }
+          })
+
+          res.status(200).send({
+            totalParcel,
+            cartItems,
+          })
+        })
+      })
+    })
+  },
+  patchQtyCartDetail: (req, res) => {
+    const { idOrder, idParcel, noParcel, qty, parcelDetail } = req.body
+
+    const checkQty = `
+    SELECT *
+    FROM product
+    WHERE idproduct=?
+    `
+
+    const parcelDetailLastIndex = parcelDetail.length - 1
+
+    const resTemp = []
+    parcelDetail.map((product, index) => {
+      const { id, name } = product
+
+      const pushResTemp = (item) => {
+        resTemp.push(item)
+      }
+
+      db.query(checkQty, id, (errQty, resQty) => {
+        const currentStock = resQty[0].product_stock
+        if (currentStock === 0) {
+          pushResTemp({
+            error: true,
+            message: `Produk ${name} habis. Mohon hapus dari isi parsel anda`,
+          })
+        } else if (qty > currentStock) {
+          pushResTemp({
+            id,
+            error: true,
+            message: `Produk ${name} tinggal ${currentStock} pcs. Mohon kurangi stok anda`,
+          })
+        }
+        if (index === parcelDetailLastIndex) {
+          setResultQty(resTemp)
+        }
+      })
+    })
+
+    const setResultQty = (resultQty) => {
+      if (resultQty.length !== 0) return res.status(400).send(resultQty)
+
+      const patchQtyCartDetail = `
+      UPDATE order_detail
+      SET 
+        parcel_qty = ${db.escape(qty)},
+        product_qty = ${db.escape(qty)}
+      WHERE idorder=${db.escape(idOrder)} AND idparcel=${db.escape(
+        idParcel
+      )} AND parcel_no=${db.escape(noParcel)};
+      `
+
+      db.query(patchQtyCartDetail, (err, result) => {
+        if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+        if (result.affectedRows === 0) return res.status(400).send("Gagal mengubah jumlah parsel!")
+
+        return res.status(200).send("Berhasil mengubah jumlah parsel!")
+      })
+    }
+  },
+  deleteCartItem: (req, res) => {
+    const { idOrder, idParcel, noParcel } = req.body
+
+    const deleteCartItem = `
+    DELETE FROM order_detail
+    WHERE idorder=${db.escape(idOrder)} AND idparcel=${db.escape(
+      idParcel
+    )} AND parcel_no=${db.escape(noParcel)};
+    `
+
+    db.query(deleteCartItem, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.affectedRows === 0) return res.status(400).send("Gagal menghapus parsel!")
+
+      return res.status(200).send("Berhasil menghapus parsel!")
+    })
+  },
 }
