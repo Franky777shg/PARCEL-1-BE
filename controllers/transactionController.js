@@ -72,8 +72,6 @@ module.exports = {
       return res.status(400).send("Oops, isi parselmu masih kosong!")
     }
 
-    let outputQty = []
-
     const checkQty = `
     SELECT *
     FROM product
@@ -99,6 +97,7 @@ module.exports = {
           })
         } else if (qty > currentStock) {
           pushResTemp({
+            idProduct,
             error: true,
             message: `Produk ${productName} tinggal ${currentStock} pcs. Mohon kurangi stok anda`,
           })
