@@ -18,5 +18,6 @@ router.post('/addParcelItens', adminProductController.newDetail)
 router.get('/mainCategories', adminProductController.mainCategories)
 router.get('/subCategories/:id', adminProductController.subCategories)
 router.post('/uploadParcel/:id/:type', uploader, adminProductController.uploadParcel)
+router.get('/deleteParcel/:id/:page/:name', adminProductController.deleteParcel)
 
 module.exports= router

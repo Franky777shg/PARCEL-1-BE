@@ -243,6 +243,7 @@ module.exports={
     //insert new Parcel_detail
     newDetail:(req,res)=>{
         const {parcelDetail}= req.body
+        console.log(parcelDetail)
 
         let itemInput = parcelDetail.map(item => [item.idparcel, item.idproduct_category, item.qty_parcel_category])
 
@@ -295,8 +296,9 @@ module.exports={
     },
 
 
+    // upload Parcel
     uploadParcel :(req,res)=>{
-        console.log(req.file)
+        // console.log(req.file)
 
         if(!req.file){
             res.status(400).send('NO FILE')
@@ -311,6 +313,44 @@ module.exports={
             }
             select = [true, "Parcel Berhasil ditambahkan"]
             res.status(200).send(select)
+        })
+    },
+
+    //delete Parcel
+    deleteParcel : (req,res)=>{
+        const productName = req.params.name
+        let deleteParcel = `delete from parcel where idparcel= ${req.params.id}`
+
+        db.query(deleteParcel, (errDelParcel, resDelParcel)=>{
+            if(errDelParcel){
+                console.log(errDelParcel)
+                res.status(400).send(errDelParcel)
+            }
+            const currenParcelPage = parseInt(req.params.page) || 1
+    
+            const parcelPerPage = parseInt(req.params.perPage) || 6
+
+            let totalParcels
+
+            let countParcel = `select count(*) as totalItems from parcel`
+            db.query(countParcel, (errCountParcel, resCountParcel)=>{
+            if(errCountParcel){
+            res.status(400).send(errCountParcel)
+            }
+            totalParcels = resCountParcel[0]
+
+            let getParcel = `select * from parcel limit ${db.escape((currenParcelPage-1)*parcelPerPage)}, ${db.escape(parcelPerPage)}`
+
+            db.query(getParcel, (errGetParcel, resGetParcel)=>{
+                if(errGetParcel){
+                res.status(400).send(errGetParcel)
+                }
+                let result =[]
+                result.push(resGetParcel, {current : currenParcelPage}, {perpage : parcelPerPage}, totalParcels,{caption :`${productName} berhasil dihapus`})
+
+                res.status(200).send(result)
+            })
+        })
         })
     }
 
