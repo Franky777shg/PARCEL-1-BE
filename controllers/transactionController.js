@@ -230,4 +230,457 @@ module.exports = {
       })
     }
   },
+  getUserCart: (req, res) => {
+    const { idusers } = req.payload
+    const CART = 1
+
+    const getIdOrderOnCart = `
+    SELECT idorder
+    FROM \`order\`
+    WHERE idusers=${db.escape(idusers)}
+    AND idorder_status=${db.escape(CART)}
+    `
+
+    db.query(getIdOrderOnCart, (errGetIdOrder, resGetIdOrder) => {
+      if (errGetIdOrder) {
+        return res.status(500).send("Terjadi kesalahan pada server!")
+      }
+
+      if (resGetIdOrder.length === 0) {
+        return res.status(400).send("Keranjang Belanjamu masih kosong!")
+      }
+
+      const idOrder = resGetIdOrder[0].idorder
+
+      const getTotalParcelOnCart = `
+      SELECT count(*) as totalParcel FROM \`order\` o
+      LEFT JOIN (
+        SELECT DISTINCT idorder, idparcel, parcel_no FROM order_detail
+      )
+      od ON o.idorder=od.idorder
+      WHERE o.idorder=${db.escape(idOrder)};
+      `
+
+      db.query(getTotalParcelOnCart, (errGetTotalParcel, resGetTotalParcel) => {
+        if (errGetTotalParcel) {
+          return res.status(500).send("Terjadi kesalahan pada server!")
+        }
+
+        if (resGetTotalParcel.length === 0) {
+          return res.status(400).send("Keranjang belanjamu masih kosong")
+        }
+
+        const totalParcel = resGetTotalParcel[0].totalParcel
+
+        const getCartItems = `
+        SELECT 
+            od.idparcel,
+            od.idorder_detail,
+            p.parcel_name,
+            p.parcel_price,
+            parcel_no,
+            parcel_qty,
+            GROUP_CONCAT(od.idproduct) as idProducts,
+            GROUP_CONCAT(product_qty) as qtyProducts,
+            GROUP_CONCAT(od.idproduct_category) as idCategories,
+            GROUP_CONCAT(prod.product_name SEPARATOR ';') as nameProducts,
+            GROUP_CONCAT(pc.category_name) as labelCategories
+        FROM
+            order_detail od
+        LEFT JOIN parcel p ON od.idparcel=p.idparcel
+        LEFT JOIN product prod ON od.idproduct=prod.idproduct
+        LEFT JOIN product_category pc ON od.idproduct_category=pc.idproduct_category
+        WHERE
+            idorder = ${db.escape(idOrder)}
+        GROUP BY od.idparcel , parcel_no;
+        `
+
+        db.query(getCartItems, (errGetCartItems, resGetCartItems) => {
+          if (errGetCartItems) {
+            return res.status(500).send("Terjadi kesalahan pada server!")
+          }
+
+          if (resGetCartItems.length === 0) {
+            return res.status(400).send("Keranjang belanjamu masih kosong")
+          }
+
+          const cartItems = resGetCartItems.map((cartItem, idx) => {
+            let parcelDetailTemp = []
+            cartItem.idProducts.split(",").map((idProduct, idx) => {
+              parcelDetailTemp.push({ no: idx + 1, id: parseInt(idProduct) })
+            })
+            cartItem.qtyProducts.split(",").map((qtyProduct, idx) => {
+              parcelDetailTemp[idx].qty = parseInt(qtyProduct)
+            })
+            cartItem.idCategories.split(",").map((idCategory, idx) => {
+              parcelDetailTemp[idx].idCategory = parseInt(idCategory)
+            })
+            cartItem.nameProducts.split(";").map((nameProduct, idx) => {
+              parcelDetailTemp[idx].name = nameProduct
+            })
+            cartItem.labelCategories.split(",").map((category, idx) => {
+              parcelDetailTemp[idx].category = category
+            })
+            return {
+              parcelData: {
+                idOrder,
+                idCartItem: cartItem.idorder_detail,
+                idParcel: cartItem.idparcel,
+                parcelName: cartItem.parcel_name,
+                parcelNo: cartItem.parcel_no,
+                parcelPrice: cartItem.parcel_price,
+                qtyParcel: cartItem.parcel_qty,
+                totalPrice: cartItem.parcel_price * cartItem.parcel_qty,
+              },
+              parcelDetail: parcelDetailTemp,
+            }
+          })
+
+          res.status(200).send({
+            idOrder,
+            totalParcel,
+            cartItems,
+          })
+        })
+      })
+    })
+  },
+  patchQtyCartDetail: (req, res) => {
+    const { idOrder, idParcel, noParcel, qty, parcelDetail } = req.body
+
+    const checkQty = `
+    SELECT *
+    FROM product
+    WHERE idproduct=?
+    `
+
+    const parcelDetailLastIndex = parcelDetail.length - 1
+
+    const resTemp = []
+    parcelDetail.map((product, index) => {
+      const { id, name } = product
+
+      const pushResTemp = (item) => {
+        resTemp.push(item)
+      }
+
+      db.query(checkQty, id, (errQty, resQty) => {
+        const currentStock = resQty[0].product_stock
+        if (currentStock === 0) {
+          pushResTemp({
+            error: true,
+            message: `Produk ${name} habis. Mohon hapus dari isi parsel anda`,
+          })
+        } else if (qty > currentStock) {
+          pushResTemp({
+            id,
+            error: true,
+            message: `Produk ${name} tinggal ${currentStock} pcs. Mohon kurangi stok anda`,
+          })
+        }
+        if (index === parcelDetailLastIndex) {
+          setResultQty(resTemp)
+        }
+      })
+    })
+
+    const setResultQty = (resultQty) => {
+      if (resultQty.length !== 0) return res.status(400).send(resultQty)
+
+      const patchQtyCartDetail = `
+      UPDATE order_detail
+      SET 
+        parcel_qty = ${db.escape(qty)},
+        product_qty = ${db.escape(qty)}
+      WHERE idorder=${db.escape(idOrder)} AND idparcel=${db.escape(
+        idParcel
+      )} AND parcel_no=${db.escape(noParcel)};
+      `
+
+      db.query(patchQtyCartDetail, (err, result) => {
+        if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+        if (result.affectedRows === 0) return res.status(400).send("Gagal mengubah jumlah parsel!")
+
+        return res.status(200).send("Berhasil mengubah jumlah parsel!")
+      })
+    }
+  },
+  deleteCartItem: (req, res) => {
+    const { idOrder, idParcel, noParcel } = req.body
+
+    const deleteCartItem = `
+    DELETE FROM order_detail
+    WHERE idorder=${db.escape(idOrder)} AND idparcel=${db.escape(
+      idParcel
+    )} AND parcel_no=${db.escape(noParcel)};
+    `
+
+    db.query(deleteCartItem, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.affectedRows === 0) return res.status(400).send("Gagal menghapus parsel!")
+
+      return res.status(200).send("Berhasil menghapus parsel!")
+    })
+  },
+  onCheckout: (req, res) => {
+    const { idOrder, cartItems, orderData } = req.body
+
+    if (cartItems.length === 0) return res.status(400).send("Oops, keranjang kamu masih kosong!")
+
+    let allProductOnParcel = []
+    cartItems.map((cartItem) =>
+      cartItem.parcelDetail.map((product) => {
+        let allProductTemp = allProductOnParcel
+        let sameStock
+        allProductTemp.map((allProduct, idx) => {
+          if (product.id === allProduct.id) {
+            sameStock = true
+            return (allProductOnParcel[idx].qty += product.qty)
+          }
+        })
+        if (sameStock !== true) {
+          return allProductOnParcel.push(product)
+        }
+      })
+    )
+
+    const checkQty = `
+    SELECT *
+    FROM product
+    WHERE idproduct=?
+    `
+
+    const parcelDetailLastIndex = allProductOnParcel.length - 1
+
+    const resTemp = []
+    allProductOnParcel.map((product, index) => {
+      const { id, name, qty } = product
+
+      const pushResTemp = (item) => {
+        resTemp.push(item)
+      }
+
+      db.query(checkQty, id, (errQty, resQty) => {
+        const currentStock = resQty[0].product_stock
+        if (currentStock === 0) {
+          pushResTemp({
+            error: true,
+            message: `Produk ${name} habis. Mohon hapus dari isi parsel anda`,
+          })
+        } else if (qty > currentStock) {
+          pushResTemp({
+            id,
+            error: true,
+            message: `Produk ${name} tinggal ${currentStock} pcs. Mohon kurangi stok anda`,
+          })
+        }
+        if (index === parcelDetailLastIndex) {
+          setResultQty(resTemp)
+        }
+      })
+    })
+
+    const setResultQty = (resultQty) => {
+      if (resultQty.length !== 0) return res.status(400).send(resultQty)
+
+      const statusBelumBayar = 2
+      orderData.idorder_status = statusBelumBayar
+      orderData.order_date = new Date()
+
+      const updateOrderData = `
+      UPDATE \`order\`
+      SET ?
+      WHERE idorder=${db.escape(idOrder)}
+      `
+
+      db.query(updateOrderData, orderData, (errUpdateOrderData, resUpdateOrderData) => {
+        if (errUpdateOrderData) return res.status(500).send("Terjadi kesalahan pada server!")
+
+        if (resUpdateOrderData.affectedRows === 0) return res.status(400).send("Checkout Gagal!")
+
+        const getOrderDetailData = `
+        SELECT idorder_detail, p.parcel_name, p.parcel_price, p.parcel_image, prod.product_name, prod.product_price, prod.product_capital FROM order_detail od
+        LEFT JOIN (
+          SELECT idparcel, parcel_name, parcel_price, parcel_image
+            FROM parcel
+        ) p ON od.idparcel=p.idparcel
+        LEFT JOIN (
+          SELECT idproduct, product_name, product_price, product_capital
+            FROM product
+        ) prod ON od.idproduct=prod.idproduct
+        WHERE idorder=${db.escape(idOrder)};
+        `
+
+        db.query(getOrderDetailData, (errGetOrderDetail, resGetOrderDetail) => {
+          const updateOrderDetail = `
+          UPDATE order_detail
+          SET ?
+          WHERE idorder_detail=?
+          `
+
+          if (errGetOrderDetail) return res.status(500).send("Terjadi kesalahan pada server!")
+
+          if (resGetOrderDetail.length === 0)
+            return res.status(500).send("Terjadi kesalahan pada server!")
+
+          resGetOrderDetail.map((orderDetail) => {
+            const idorder_detail = orderDetail.idorder_detail
+            const orderDetailData = { ...orderDetail }
+            delete orderDetailData.idorder_detail
+
+            db.query(updateOrderDetail, [orderDetailData, idorder_detail])
+          })
+
+          return res.status(200).send("Berhasil Checkout!")
+        })
+      })
+    }
+  },
+  getUploadPayment: (req, res) => {
+    const { idusers } = req.payload
+    const { idorder } = req.params
+
+    const getOrderData = `
+    SELECT order_number, order_price
+    FROM \`order\`
+    WHERE idorder=${db.escape(idorder)} AND idusers=${db.escape(idusers)} AND idorder_status=2
+    `
+
+    db.query(getOrderData, (errGetOrderData, resGetOrderData) => {
+      if (errGetOrderData) return res.status(500).send("Terjadi kesalahan pada server")
+
+      if (resGetOrderData.length === 0) return res.status(400).send("Data Order tidak ditemukan")
+
+      const orderNumber = resGetOrderData[0].order_number
+      const orderPrice = resGetOrderData[0].order_price
+
+      res.status(200).send({ orderNumber, orderPrice })
+    })
+  },
+  patchUploadPayment: (req, res) => {
+    const { idorder } = req.params
+    const { idusers } = req.payload
+
+    if (!req.file) return res.status(400).send("Kamu harus mengupload bukti pembayaran!")
+    const payment_proof = req.file.filename
+
+    const statusMK = 3
+
+    const patchPaymentProof = `
+    UPDATE \`order\`
+    SET payment_proof=${db.escape(payment_proof)}, idorder_status=${db.escape(statusMK)}
+    WHERE idorder=${db.escape(idorder)} AND idusers=${db.escape(idusers)}
+    `
+
+    db.query(patchPaymentProof, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.affectedRows === 0)
+        return res.status(400).send("Gagal mengunggah bukti pembayaran!")
+
+      return res
+        .status(200)
+        .send(
+          "Unggah Bukti Pembayaran Berhasil! Kami akan memeriksa pembayaran anda, Terimakasih sudah berbelanja di ADJ Parcel 😊."
+        )
+    })
+  },
+  getOrderStatus: (req, res) => {
+    const getOrderStatus = `
+    SELECT *
+    FROM order_status
+    WHERE idorder_status > 1
+    `
+
+    db.query(getOrderStatus, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+      if (result.length === 0) return res.status(500).send("Terjadi kesalahan pada server!")
+      return res.status(200).send(result)
+    })
+  },
+  getUserTransaction: (req, res) => {
+    const { idusers } = req.payload
+
+    const getUserTransaction = `
+    SELECT 
+    o.idorder,
+    o.order_date,
+    o.order_number,
+    o.order_price,
+    o.idorder_status,
+    os.order_status,
+    od.parcel_name,
+    od.parcel_image,
+    od.parcel_price,
+    od.parcel_qty,
+    count(od.parcel_no) as totalParcel
+    FROM
+        \`order\` o
+            LEFT JOIN
+        order_status os ON o.idorder_status = os.idorder_status
+            LEFT JOIN
+        (SELECT DISTINCT
+            idorder, idparcel, parcel_no, parcel_name, parcel_image, parcel_price, parcel_qty
+        FROM
+            order_detail
+        GROUP BY idorder , idparcel , parcel_no) od ON o.idorder = od.idorder
+    WHERE
+        idusers = ${db.escape(idusers)} AND o.idorder_status > 1
+    GROUP BY o.idorder
+    ORDER BY idorder DESC;
+    `
+
+    db.query(getUserTransaction, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(400).send("Daftar Transaksimu masih kosong!")
+
+      res.status(200).send(result)
+    })
+  },
+  getUserTransactionByStatus: (req, res) => {
+    const { idusers } = req.payload
+    const { idOrderStatus } = req.params
+
+    if (idOrderStatus < 2) return res.status(400).send("Terjadi kesalahan pada server!")
+
+    const getUserTransaction = `
+    SELECT 
+    o.idorder,
+    o.order_date,
+    o.order_number,
+    o.order_price,
+    o.idorder_status,
+    os.order_status,
+    od.parcel_name,
+    od.parcel_image,
+    od.parcel_price,
+    od.parcel_qty,
+    count(od.parcel_no) as totalParcel
+    FROM
+        \`order\` o
+            LEFT JOIN
+        order_status os ON o.idorder_status = os.idorder_status
+            LEFT JOIN
+        (SELECT DISTINCT
+            idorder, idparcel, parcel_no, parcel_name, parcel_image, parcel_price, parcel_qty
+        FROM
+            order_detail
+        GROUP BY idorder , idparcel , parcel_no) od ON o.idorder = od.idorder
+    WHERE
+        idusers = ${db.escape(idusers)} AND o.idorder_status = ${db.escape(idOrderStatus)}
+    GROUP BY o.idorder
+    ORDER BY idorder DESC;
+    `
+
+    db.query(getUserTransaction, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(400).send("Daftar Transaksimu masih kosong!")
+
+      res.status(200).send(result)
+    })
+  },
 }
