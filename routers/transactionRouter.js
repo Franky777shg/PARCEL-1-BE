@@ -13,11 +13,14 @@ router.patch("/cart/qty", TransactionController.patchQtyCartDetail)
 router.delete("/cart", TransactionController.deleteCartItem)
 router.post("/checkout", TransactionController.onCheckout)
 router.get("/upload-payment/:idorder", verifyToken, TransactionController.getUploadPayment)
+router.get("/order-status", TransactionController.getOrderStatus)
 router.patch(
   "/upload-payment/:idorder/:type",
   verifyToken,
   uploader,
   TransactionController.patchUploadPayment
 )
+router.get("/history", verifyToken, TransactionController.getUserTransaction)
+router.get("/history/:idOrderStatus", verifyToken, TransactionController.getUserTransactionByStatus)
 
 module.exports = router
