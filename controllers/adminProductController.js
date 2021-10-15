@@ -352,8 +352,193 @@ module.exports={
             })
         })
         })
-    }
+    },
 
+    //get Parcel by id
+    getParcelId : (req, res)=>{
+        const parcel = `select * from parcel where idparcel=${req.params.id}`
+
+        db.query(parcel, (errPc, resPc)=>{
+            if(errPc){
+                console.log(errPc)
+                res.status(400).send(errPc)
+            }
+            // result = resPc[0]
+            // console.log(result)
+            // res.status(200).send(result)
+
+            const parcelDetail = `select d.idparcel_detail, e.category_name as parent_category_name, e.idproduct_category, d.idproduct_category, d.qty_parcel_category, d.idparcel, p.category_name from product_category e
+            left join product_category p
+            on e.idproduct_category=p.parentID
+            left join parcel_detail d
+            on p.idproduct_category=d.idproduct_category
+            where d.idparcel=${req.params.id};`
+
+            db.query(parcelDetail, (errPD, resPD)=>{
+                if(errPD){
+                    console.log(errPD)
+                    res.status(400).send(errPD)
+                }
+                let parcelDet = []
+
+                parcelDet.push(resPD, resPc[0])
+                res.status(200).send(parcelDet)
+
+            })
+        })
+    },
+
+    
+
+    //edit parcel
+    editParcel : (req,res)=>{
+        const {newDetail, idparcel, name} =req.body
+
+        const deleteDetailParcel = `delete from parcel_detail where idparcel =${idparcel}`
+
+        db.query(deleteDetailParcel, (errDDP, resDDP)=>{
+            if(errDDP){
+                console.log(errDDP)
+                res.status(400).send(errDDP)
+            }
+
+            let itemInput = newDetail.map(item => [item.idparcel, item.idproduct_category, item.qty_parcel_category])
+
+            let insertDetail = `insert into parcel_detail (idparcel, idproduct_category, qty_parcel_category) values ?`
+
+            db.query(insertDetail, [itemInput], (errInsertDetail, resInsertDetail)=>{
+                if(errInsertDetail){
+                    console.log(errInsertDetail)
+                    res.status(400).send(errInsertDetail)
+                }
+                const parcel = `select * from parcel where idparcel=${db.escape(idparcel)}`
+
+        db.query(parcel, (errPc, resPc)=>{
+            if(errPc){
+                console.log(errPc)
+                res.status(400).send(errPc)
+            }
+            // result = resPc[0]
+            // console.log(result)
+            // res.status(200).send(result)
+
+            const parcelDetail = `select d.idparcel_detail, e.category_name as parent_category_name, e.idproduct_category, d.idproduct_category, d.qty_parcel_category, d.idparcel, p.category_name from product_category e
+            left join product_category p
+            on e.idproduct_category=p.parentID
+            left join parcel_detail d
+            on p.idproduct_category=d.idproduct_category
+            where d.idparcel=${idparcel};`
+
+            db.query(parcelDetail, (errPD, resPD)=>{
+                if(errPD){
+                    console.log(errPD)
+                    res.status(400).send(errPD)
+                }
+                let parcelDet = []
+
+                parcelDet.push(resPD, resPc[0], {success : [true , `Data parsel ${name} berhasil diubah`]})
+                res.status(200).send(parcelDet)
+
+            })
+        })
+
+            })
+        })
+
+
+    },
+
+    //edit Parcel Deskripsi
+    editDeskripsiParcel :(req,res)=>{
+        const {parcel_name,parcel_price,parcel_desc, idparcel}= req.body
+
+        const updateParcelDesc = `update parcel set ? where idparcel=${req.body.idparcel}`
+
+        let data =[{parcel_name,parcel_price,parcel_desc}]
+
+
+       db.query(updateParcelDesc,data, (errUPD, resUPD)=>{
+           if(errUPD){
+               console.log(errUPD)
+               res.status(400).send(errUPD)
+           }
+
+        const parcel = `select * from parcel where idparcel=${db.escape(idparcel)}`
+
+        db.query(parcel, (errPc, resPc)=>{
+            if(errPc){
+                console.log(errPc)
+                res.status(400).send(errPc)
+            }
+
+            const parcelDetail = `select d.idparcel_detail, e.category_name as parent_category_name, e.idproduct_category, d.idproduct_category, d.qty_parcel_category, d.idparcel, p.category_name from product_category e
+            left join product_category p
+            on e.idproduct_category=p.parentID
+            left join parcel_detail d
+            on p.idproduct_category=d.idproduct_category
+            where d.idparcel=${idparcel};`
+
+            db.query(parcelDetail, (errPD, resPD)=>{
+                if(errPD){
+                    console.log(errPD)
+                    res.status(400).send(errPD)
+                }
+                let parcelDet = []
+
+                parcelDet.push(resPD, resPc[0], {success : [true , `Data parsel ${parcel_name} berhasil diubah`]})
+                res.status(200).send(parcelDet)
+
+            })
+        })
+
+       } )
+
+
+    },
+
+    //upload edit parcel 
+    uploadEditParcel :(req,res)=>{
+        if(!req.file){
+            res.status(400).send('NO FILE')
+        }
+        let updatePhotoParcel = `update parcel set parcel_image = '${req.file.filename}' where idparcel=${req.params.id};
+        `
+        db.query(updatePhotoParcel, (errParc, resParc)=>{
+            if(errParc){
+                console.log(errParc)
+                res.status(400).send(errParc)
+            }
+            const parcel = `select * from parcel where idparcel=${req.params.id}`
+
+        db.query(parcel, (errPc, resPc)=>{
+            if(errPc){
+                console.log(errPc)
+                res.status(400).send(errPc)
+            }
+
+            const parcelDetail = `select d.idparcel_detail, e.category_name as parent_category_name, e.idproduct_category, d.idproduct_category, d.qty_parcel_category, d.idparcel, p.category_name from product_category e
+            left join product_category p
+            on e.idproduct_category=p.parentID
+            left join parcel_detail d
+            on p.idproduct_category=d.idproduct_category
+            where d.idparcel=${req.params.id};`
+
+            db.query(parcelDetail, (errPD, resPD)=>{
+                if(errPD){
+                    console.log(errPD)
+                    res.status(400).send(errPD)
+                }
+                let parcelDet = []
+
+                parcelDet.push(resPD, resPc[0], {success : [true , `Gambar parsel berhasil diubah`]})
+                res.status(200).send(parcelDet)
+
+            })
+        })    
+        })
+
+        
+    }
 
 
     
