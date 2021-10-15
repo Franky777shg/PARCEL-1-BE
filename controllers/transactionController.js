@@ -683,4 +683,71 @@ module.exports = {
       res.status(200).send(result)
     })
   },
+  getUserTransactionDetail: (req, res) => {
+    const { idusers } = req.payload
+    const { idorder } = req.params
+
+    const getUserTrxDetailHead = `
+    SELECT idorder, order_number, order_date, order_price, o.idorder_status, order_status, recipient_name, recipient_address, payment_proof
+    FROM \`order\` o
+    LEFT JOIN order_status os ON o.idorder_status=os.idorder_status
+    WHERE idorder=${db.escape(idorder)} AND idusers=${db.escape(idusers)}
+    `
+
+    db.query(getUserTrxDetailHead, (errGetHead, resGetHead) => {
+      if (errGetHead) return res.status(500).send("Terjadi kesalahan pada server")
+
+      if (resGetHead.length === 0)
+        return res.status(400).send("Data detail pesanan tidak ditemukan!")
+
+      const getUserTrxDetailBody = `
+      SELECT DISTINCT
+          idorder_detail,
+      parcel_name,
+      parcel_image,
+      parcel_price,
+          parcel_qty,
+          GROUP_CONCAT(product_name SEPARATOR ';') as productNameList,
+          GROUP_CONCAT(category_name) as productCategory,
+          GROUP_CONCAT(product_qty) as productQtyList
+      FROM
+          order_detail ode
+      LEFT JOIN product_category pc ON ode.idproduct_category=pc.idproduct_category
+      WHERE
+          idorder = ${db.escape(idorder)}
+      GROUP BY idorder , idparcel , parcel_no;
+      `
+
+      db.query(getUserTrxDetailBody, (errDetailBody, resDetailBody) => {
+        if (errDetailBody) return res.status(500).send("Terjadi kesalahan pada server")
+
+        if (resDetailBody.length === 0)
+          return res.status(400).send("Data detail pesanan tidak ditemukan!")
+
+        const orderDetailBody = resDetailBody.map((orderDetail) => {
+          const productDetail = []
+          const { productNameList, productCategory, productQtyList } = orderDetail
+          orderDetail.productNameList = productNameList
+            .split(";")
+            .map((product) => productDetail.push({ name: product }))
+          orderDetail.productCategory = productCategory
+            .split(",")
+            .map((category, idx) => (productDetail[idx].category = category))
+          orderDetail.productQtyList = productQtyList
+            .split(",")
+            .map((qty, idx) => (productDetail[idx].qty = parseInt(qty)))
+          delete orderDetail.productNameList
+          delete orderDetail.productCategory
+          delete orderDetail.productQtyList
+          orderDetail.productDetail = productDetail
+          return orderDetail
+        })
+
+        return res.status(200).send({
+          orderDetailHead: resGetHead[0],
+          orderDetailBody,
+        })
+      })
+    })
+  },
 }

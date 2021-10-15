@@ -22,5 +22,6 @@ router.patch(
 )
 router.get("/history", verifyToken, TransactionController.getUserTransaction)
 router.get("/history/:idOrderStatus", verifyToken, TransactionController.getUserTransactionByStatus)
+router.get("/detail/:idorder", verifyToken, TransactionController.getUserTransactionDetail)
 
 module.exports = router
