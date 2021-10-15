@@ -283,7 +283,7 @@ module.exports = {
             GROUP_CONCAT(od.idproduct) as idProducts,
             GROUP_CONCAT(product_qty) as qtyProducts,
             GROUP_CONCAT(od.idproduct_category) as idCategories,
-            GROUP_CONCAT(prod.product_name) as nameProducts,
+            GROUP_CONCAT(prod.product_name SEPARATOR ';') as nameProducts,
             GROUP_CONCAT(pc.category_name) as labelCategories
         FROM
             order_detail od
@@ -315,7 +315,7 @@ module.exports = {
             cartItem.idCategories.split(",").map((idCategory, idx) => {
               parcelDetailTemp[idx].idCategory = parseInt(idCategory)
             })
-            cartItem.nameProducts.split(",").map((nameProduct, idx) => {
+            cartItem.nameProducts.split(";").map((nameProduct, idx) => {
               parcelDetailTemp[idx].name = nameProduct
             })
             cartItem.labelCategories.split(",").map((category, idx) => {
@@ -501,9 +501,9 @@ module.exports = {
         if (resUpdateOrderData.affectedRows === 0) return res.status(400).send("Checkout Gagal!")
 
         const getOrderDetailData = `
-        SELECT idorder_detail, p.parcel_name, p.parcel_price, prod.product_name, prod.product_price, prod.product_capital FROM order_detail od
+        SELECT idorder_detail, p.parcel_name, p.parcel_price, p.parcel_image, prod.product_name, prod.product_price, prod.product_capital FROM order_detail od
         LEFT JOIN (
-          SELECT idparcel, parcel_name, parcel_price
+          SELECT idparcel, parcel_name, parcel_price, parcel_image
             FROM parcel
         ) p ON od.idparcel=p.idparcel
         LEFT JOIN (
@@ -543,7 +543,7 @@ module.exports = {
     const { idorder } = req.params
 
     const getOrderData = `
-    SELECT order_number
+    SELECT order_number, order_price
     FROM \`order\`
     WHERE idorder=${db.escape(idorder)} AND idusers=${db.escape(idusers)} AND idorder_status=2
     `
@@ -554,8 +554,9 @@ module.exports = {
       if (resGetOrderData.length === 0) return res.status(400).send("Data Order tidak ditemukan")
 
       const orderNumber = resGetOrderData[0].order_number
+      const orderPrice = resGetOrderData[0].order_price
 
-      res.status(200).send(orderNumber)
+      res.status(200).send({ orderNumber, orderPrice })
     })
   },
   patchUploadPayment: (req, res) => {
@@ -584,6 +585,169 @@ module.exports = {
         .send(
           "Unggah Bukti Pembayaran Berhasil! Kami akan memeriksa pembayaran anda, Terimakasih sudah berbelanja di ADJ Parcel 😊."
         )
+    })
+  },
+  getOrderStatus: (req, res) => {
+    const getOrderStatus = `
+    SELECT *
+    FROM order_status
+    WHERE idorder_status > 1
+    `
+
+    db.query(getOrderStatus, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+      if (result.length === 0) return res.status(500).send("Terjadi kesalahan pada server!")
+      return res.status(200).send(result)
+    })
+  },
+  getUserTransaction: (req, res) => {
+    const { idusers } = req.payload
+
+    const getUserTransaction = `
+    SELECT 
+    o.idorder,
+    o.order_date,
+    o.order_number,
+    o.order_price,
+    o.idorder_status,
+    os.order_status,
+    od.parcel_name,
+    od.parcel_image,
+    od.parcel_price,
+    od.parcel_qty,
+    count(od.parcel_no) as totalParcel
+    FROM
+        \`order\` o
+            LEFT JOIN
+        order_status os ON o.idorder_status = os.idorder_status
+            LEFT JOIN
+        (SELECT DISTINCT
+            idorder, idparcel, parcel_no, parcel_name, parcel_image, parcel_price, parcel_qty
+        FROM
+            order_detail
+        GROUP BY idorder , idparcel , parcel_no) od ON o.idorder = od.idorder
+    WHERE
+        idusers = ${db.escape(idusers)} AND o.idorder_status > 1
+    GROUP BY o.idorder
+    ORDER BY idorder DESC;
+    `
+
+    db.query(getUserTransaction, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(400).send("Daftar Transaksimu masih kosong!")
+
+      res.status(200).send(result)
+    })
+  },
+  getUserTransactionByStatus: (req, res) => {
+    const { idusers } = req.payload
+    const { idOrderStatus } = req.params
+
+    if (idOrderStatus < 2) return res.status(400).send("Terjadi kesalahan pada server!")
+
+    const getUserTransaction = `
+    SELECT 
+    o.idorder,
+    o.order_date,
+    o.order_number,
+    o.order_price,
+    o.idorder_status,
+    os.order_status,
+    od.parcel_name,
+    od.parcel_image,
+    od.parcel_price,
+    od.parcel_qty,
+    count(od.parcel_no) as totalParcel
+    FROM
+        \`order\` o
+            LEFT JOIN
+        order_status os ON o.idorder_status = os.idorder_status
+            LEFT JOIN
+        (SELECT DISTINCT
+            idorder, idparcel, parcel_no, parcel_name, parcel_image, parcel_price, parcel_qty
+        FROM
+            order_detail
+        GROUP BY idorder , idparcel , parcel_no) od ON o.idorder = od.idorder
+    WHERE
+        idusers = ${db.escape(idusers)} AND o.idorder_status = ${db.escape(idOrderStatus)}
+    GROUP BY o.idorder
+    ORDER BY idorder DESC;
+    `
+
+    db.query(getUserTransaction, (err, result) => {
+      if (err) return res.status(500).send("Terjadi kesalahan pada server!")
+
+      if (result.length === 0) return res.status(400).send("Daftar Transaksimu masih kosong!")
+
+      res.status(200).send(result)
+    })
+  },
+  getUserTransactionDetail: (req, res) => {
+    const { idusers } = req.payload
+    const { idorder } = req.params
+
+    const getUserTrxDetailHead = `
+    SELECT idorder, order_number, order_date, order_price, o.idorder_status, order_status, recipient_name, recipient_address, payment_proof
+    FROM \`order\` o
+    LEFT JOIN order_status os ON o.idorder_status=os.idorder_status
+    WHERE idorder=${db.escape(idorder)} AND idusers=${db.escape(idusers)}
+    `
+
+    db.query(getUserTrxDetailHead, (errGetHead, resGetHead) => {
+      if (errGetHead) return res.status(500).send("Terjadi kesalahan pada server")
+
+      if (resGetHead.length === 0)
+        return res.status(400).send("Data detail pesanan tidak ditemukan!")
+
+      const getUserTrxDetailBody = `
+      SELECT DISTINCT
+          idorder_detail,
+      parcel_name,
+      parcel_image,
+      parcel_price,
+          parcel_qty,
+          GROUP_CONCAT(product_name SEPARATOR ';') as productNameList,
+          GROUP_CONCAT(category_name) as productCategory,
+          GROUP_CONCAT(product_qty) as productQtyList
+      FROM
+          order_detail ode
+      LEFT JOIN product_category pc ON ode.idproduct_category=pc.idproduct_category
+      WHERE
+          idorder = ${db.escape(idorder)}
+      GROUP BY idorder , idparcel , parcel_no;
+      `
+
+      db.query(getUserTrxDetailBody, (errDetailBody, resDetailBody) => {
+        if (errDetailBody) return res.status(500).send("Terjadi kesalahan pada server")
+
+        if (resDetailBody.length === 0)
+          return res.status(400).send("Data detail pesanan tidak ditemukan!")
+
+        const orderDetailBody = resDetailBody.map((orderDetail) => {
+          const productDetail = []
+          const { productNameList, productCategory, productQtyList } = orderDetail
+          orderDetail.productNameList = productNameList
+            .split(";")
+            .map((product) => productDetail.push({ name: product }))
+          orderDetail.productCategory = productCategory
+            .split(",")
+            .map((category, idx) => (productDetail[idx].category = category))
+          orderDetail.productQtyList = productQtyList
+            .split(",")
+            .map((qty, idx) => (productDetail[idx].qty = parseInt(qty)))
+          delete orderDetail.productNameList
+          delete orderDetail.productCategory
+          delete orderDetail.productQtyList
+          orderDetail.productDetail = productDetail
+          return orderDetail
+        })
+
+        return res.status(200).send({
+          orderDetailHead: resGetHead[0],
+          orderDetailBody,
+        })
+      })
     })
   },
 }
