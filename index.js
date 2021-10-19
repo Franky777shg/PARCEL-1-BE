@@ -24,18 +24,20 @@ app.get("/", (req, res) => {
 });
 
 const {
-  AuthRouter,
+  authRouter,
   adminProductRouter,
   homepageRouter,
   transactionRouter,
   profileRouter,
+  adminRevenueRouter
 } = require("./routers");
 // ROUTER
-app.use("/auth", AuthRouter);
+app.use("/auth", authRouter);
 app.use("/productAdmin", adminProductRouter);
 app.use("/homepage", homepageRouter);
 app.use("/transaction", transactionRouter);
 app.use("/profile", profileRouter);
+app.use("/revenue", adminRevenueRouter);
 
 app.listen(PORT, () =>
   console.log(`Server is running at http://localhost:${PORT}/`)
