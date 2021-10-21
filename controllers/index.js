@@ -1,13 +1,15 @@
 const adminProductController = require("./adminProductController");
-const AuthControllers = require("./authControllers");
+const authControllers = require("./authControllers");
 const homepageController = require("./homepageController");
-const TransactionController = require("./transactionController");
+const transactionController = require("./transactionController");
 const profileController = require("./profileController");
+const adminRevenueController = require("./adminRevenueController");
 
 module.exports = {
   adminProductController,
-  AuthControllers,
+  authControllers,
   homepageController,
-  TransactionController,
+  transactionController,
   profileController,
+  adminRevenueController
 };
