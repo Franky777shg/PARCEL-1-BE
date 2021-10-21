@@ -10,7 +10,7 @@ router.put(
   profileController.updateProfileData
 );
 router.put(
-  "/updateProfilePhoto",
+  "/updateProfilePhoto/:type",
   uploader,
   verifyToken,
   profileController.updateProfilePhoto

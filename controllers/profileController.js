@@ -35,22 +35,22 @@ module.exports = {
   },
   updateProfilePhoto: (req, res) => {
     const { idusers } = req.payload;
-    console.log("req.file", req.file);
+    // console.log("req.file", req.file);
 
     if (!req.file) {
       res.status(400).send("NO FILE");
     }
 
-    const updatePhoto = `UPDATE profile SET avatar = "uploads/avatar/${
-      res.file.filename
+    const updatePhoto = `UPDATE profile SET avatar = "${
+      req.file.filename
     }" WHERE idusers = ${db.escape(idusers)}`;
     db.query(updatePhoto, (errUpdatePhoto, resUpdatePhoto) => {
       if (errUpdatePhoto) {
-        console.log(errUpdatePhoto);
+        // console.log(errUpdatePhoto);
         res.status(400).send(errUpdatePhoto);
       }
 
-      res.status(200).send(resUpdatePhoto);
+      res.status(200).send({ avatar: req.file.filename });
     });
   },
   changeProfilePassword: (req, res) => {
