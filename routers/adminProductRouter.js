@@ -23,5 +23,10 @@ router.get('/getParcelbyId/:id', adminProductController.getParcelId)
 router.post('/updateParcel', adminProductController.editParcel)
 router.post('/editDeskripsi', adminProductController.editDeskripsiParcel)
 router.post('/uploadEditParcel/:id/:type',uploader, adminProductController.uploadEditParcel)
+router.get('/getProductReport', adminProductController.productReport)
+router.get('/getParcelReport', adminProductController.parcelReport)
+router.post('/getProductDate', adminProductController.productReportbyDate)
+router.post('/getParcelDate', adminProductController.parcelReportByDate)
+router.post('/sortParcelDate', adminProductController.sortParcelReportByDate)
 
 module.exports= router
