@@ -538,6 +538,340 @@ module.exports={
         })
 
         
+    },
+
+    //get product report
+    productReport : (req, res)=>{
+        let productRep = `select d.product_name, count(*) as total_Items, sum(d.product_price) as total_price, o.order_date from \`order\`o
+        left join order_detail d 
+        on o.idorder = d.idorder
+        where o.order_date >= date_sub(curdate(), interval 30 day) and o.idorder_status=4
+        group by d.product_name
+         ;`
+
+        db.query(productRep, (errPR, resPR)=>{
+            if(errPR){
+                console.log(errPR)
+                res.status(400).send(errPR)
+            }
+            let result = []
+            let resultPR = resPR
+            let resultName = []
+            let resultData =[]
+            for(let i=0; i<resultPR.length;i++){
+                resultName.push(resultPR[i].product_name)
+                resultData.push(resultPR[i].total_Items)
+
+            }
+            let date ="Selama 30 hari"
+            result.push(resultPR,resultName, resultData, date )
+            res.status(200).send(result)
+        })
+    },
+
+    productReportbyDate : (req,res)=>{
+        const {date1, date2}=req.body
+
+        if(!date1 && !date2){
+            return res.status(400).send([true, "pastikan semua form telah terisi"])
+        }
+
+        if(date1 && date2){
+            let productRep = `select d.product_name, count(*) as total_Items, sum(d.product_price) as total_price, o.order_date from \`order\`o
+        left join order_detail d 
+        on o.idorder = d.idorder
+        where o.order_date between ${db.escape(date1)} and ${db.escape(date2)}  and o.idorder_status=4
+        group by d.product_name
+         ;`
+
+        db.query(productRep, (errPR, resPR)=>{
+            if(errPR){
+                console.log(errPR)
+                res.status(400).send(errPR)
+            }
+            let result = []
+            let resultPR = resPR
+            let resultName = []
+            let resultData =[]
+            for(let i=0; i<resultPR.length;i++){
+                resultName.push(resultPR[i].product_name)
+                resultData.push(resultPR[i].total_Items)
+
+            }
+            let fixDate1 = date1.split(/\D/g)
+            let trueDate1 = [fixDate1[2], fixDate1[1], fixDate1[0]].join("-")
+            let fixDate2 = date2.split(/\D/g)
+            let trueDate2 = [fixDate2[2], fixDate2[1], fixDate2[0]].join("-")
+            let date = `selama ${trueDate1}- ${trueDate2}`
+            result.push(resultPR,resultName, resultData, date )
+            res.status(200).send(result)
+        })
+        }
+        else if(date1 && !date2){
+            let prodRep1 = `select d.product_name, count(*) as total_Items, sum(d.product_price) as total_price, o.order_date from \`order\`o
+            left join order_detail d 
+            on o.idorder = d.idorder
+            where o.order_date =${db.escape(date1)}  and o.idorder_status=4
+            group by d.product_name
+             ;`
+
+            db.query(prodRep1, (errPR1, resPR1)=>{
+                if(errPR1){
+                    console.log(errPR1)
+                    res.status(400).send(errPR1)
+                }
+                let result = []
+                let resultPR = resPR1
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].product_name)
+                    resultData.push(resultPR[i].total_Items)
+    
+                }
+                let fixDate1 = date1.split(/\D/g)
+                let trueDate1 = [fixDate1[2], fixDate1[1], fixDate1[0]].join("-")
+                let date =`selama ${trueDate1}`
+                result.push(resultPR,resultName, resultData, date )
+                res.status(200).send(result)
+            })
+        }
+        else if(!date1 && date2){
+            let prodRep2 = `select d.product_name, count(*) as total_Items, sum(d.product_price) as total_price, o.order_date from \`order\`o
+            left join order_detail d 
+            on o.idorder = d.idorder
+            where o.order_date =${db.escape(date2)}  and o.idorder_status=4
+            group by d.product_name
+             ;`
+
+            db.query(prodRep2, (errPR2, resPR2)=>{
+                if(errPR2){
+                    console.log(errPR2)
+                    res.status(400).send(errPR2)
+                }
+                let result = []
+                let resultPR = resPR2
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].product_name)
+                    resultData.push(resultPR[i].total_Items)
+    
+                }
+                let fixDate2 = date2.split(/\D/g)
+                let trueDate2 = [fixDate2[2], fixDate2[1], fixDate2[0]].join("-")
+                let date = `selama ${trueDate2}`
+                result.push(resultPR,resultName, resultData, date )
+                res.status(200).send(result)
+            })
+        }
+    },
+
+
+    //get Parcel Report
+    parcelReport : (req,res)=>{
+        let parcelRep = `select d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+        left join \`order\`o
+        on d.idorder=o.idorder
+        where o.order_date >= date_sub(curdate(), interval 30 day) and o.idorder_status=4
+        group by d.parcel_name;`
+
+        db.query(parcelRep, (errPaR, resPaR)=>{
+            if(errPaR){
+                console.log(errPaR)
+                res.status(400).send(errPaR)
+            }
+            let result = []
+                let resultPR = resPaR
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].parcel_name)
+                    resultData.push(resultPR[i].total_Payment)
+    
+                }
+                let date = `selama 30 hari`
+                result.push(resultPR,resultName, resultData, date )
+            
+            res.status(200).send(result)
+        })
+    },
+
+    parcelReportByDate : (req,res)=>{
+        const {dateParcel1, dateParcel2}=req.body
+
+        if(!dateParcel1 && !dateParcel2){
+            return res.status(400).send([true,"Pastikan semua form telah terisi"])
+        }
+
+        if(dateParcel1 && dateParcel2){
+        let parcelRep12 = `select d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+        left join \`order\`o
+        on d.idorder=o.idorder
+        where o.order_date between ${db.escape(dateParcel1)} and ${db.escape(dateParcel2)} and o.idorder_status=4
+        group by d.parcel_name;`
+
+        db.query(parcelRep12, (errPaR12, resPaR12)=>{
+            if(errPaR12){
+                console.log(errPaR12)
+                res.status(400).send(errPaR12)
+            }
+            let result = []
+                let resultPR = resPaR12
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].parcel_name)
+                    resultData.push(resultPR[i].total_Payment)
+    
+                }
+                let fixDate1 = dateParcel1.split(/\D/g)
+                let trueDate1 = [fixDate1[2], fixDate1[1], fixDate1[0]].join("-")
+                let fixDate2 = dateParcel2.split(/\D/g)
+                let trueDate2 = [fixDate2[2], fixDate2[1], fixDate2[0]].join("-")
+                let date = `selama ${trueDate1} - ${trueDate2}`
+                result.push(resultPR,resultName, resultData, date )
+            res.status(200).send(result)
+        })
+        }
+        else if (dateParcel1 && !dateParcel2){
+        let parcelRepOnly1 = `select d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+        left join \`order\`o
+        on d.idorder=o.idorder
+        where o.order_date =${db.escape(dateParcel1)} and o.idorder_status=4
+        group by d.parcel_name;`
+
+        db.query(parcelRepOnly1, (errPaR1, resPaR1)=>{
+            if(errPaR1){
+                console.log(errPaR1)
+                res.status(400).send(errPaR1)
+            }
+            let result = []
+                let resultPR = resPaR1
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].parcel_name)
+                    resultData.push(resultPR[i].total_Payment)
+    
+                }
+                let fixDate1 = dateParcel1.split(/\D/g)
+                let trueDate1 = [fixDate1[2], fixDate1[1], fixDate1[0]].join("-")
+                let date = `selama ${trueDate1}`
+                result.push(resultPR,resultName, resultData, date )
+            res.status(200).send(result)
+        })
+        }
+        else if (!dateParcel1 && dateParcel2){
+        let parcelRepOnly2 = `select d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+        left join \`order\`o
+        on d.idorder=o.idorder
+        where o.order_date =${db.escape(dateParcel2)} and o.idorder_status=4
+        group by d.parcel_name;`
+
+        db.query(parcelRepOnly2, (errPaR2, resPaR2)=>{
+            if(errPaR2){
+                console.log(errPaR2)
+                res.status(400).send(errPaR2)
+            }
+            let result = []
+                let resultPR = resPaR2
+                let resultName = []
+                let resultData =[]
+                for(let i=0; i<resultPR.length;i++){
+                    resultName.push(resultPR[i].parcel_name)
+                    resultData.push(resultPR[i].total_Payment)
+    
+                }
+                let fixDate2 = dateParcel2.split(/\D/g)
+                let trueDate2 = [fixDate2[2], fixDate2[1], fixDate2[0]].join("-")
+                let date = `selama ${trueDate2}`
+                result.push(resultPR,resultName, resultData, date )
+            res.status(200).send(result)
+        })
+        }
+    },
+
+    //sort parcel by
+    sortParcelReportByDate :(req,res)=>{
+        const {dateParcel1, dateParcel2} = req.body
+
+        if(!dateParcel1 && dateParcel2){
+            return res.status(400).send([true, "masukkan tanggal secara spesifik"])
+        }
+        else if (dateParcel1 && !dateParcel2){
+            return res.status(400).send([true, "masukkan tanggal secara spesifik "])
+        }
+
+        if(!dateParcel1 && !dateParcel2){
+            let sortParcel = `select o.order_date, d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+            left join \`order\`o
+            on d.idorder=o.idorder
+            where o.order_date >= date_sub(curdate(), interval 30 day) and o.idorder_status=4
+            group by o.order_date;`
+
+            db.query(sortParcel, (errSP, resSP)=>{
+                if(errSP){
+                    console.log(errSP)
+                    res.status(400).send(errSP)
+                }
+                let result = []
+                let resultPR = resSP
+                let resultName = []
+                let resultData =[]
+                let newDate = ""
+                let newNewDate =""
+                for(let i=0; i<resultPR.length;i++){
+                    newDate = resultPR[i].order_date.toString()
+                    newNewDate = newDate.slice(0,15)
+                    // resultName.push(resultPR[i].order_date)
+                    resultName.push(newNewDate)
+                    resultData.push(resultPR[i].total_Payment)
+                    newDate =""
+                    newNewDate = ""
+    
+                }
+                let date = `selama 30 hari`
+                result.push(resultPR,resultName, resultData,date )
+                res.status(200).send(result)
+            })
+        }
+        else if(dateParcel1 && dateParcel2){
+            let sortParcel1 = `select o.order_date, d.parcel_name, count(distinct d.idorder)as item_sold, sum(distinct d.parcel_price) as total_Payment from order_detail d
+            left join \`order\`o
+            on d.idorder=o.idorder
+            where o.order_date between ${db.escape(dateParcel1)} and ${db.escape(dateParcel2)} and o.idorder_status=4
+            group by o.order_date;`
+
+            db.query(sortParcel1, (errSP1, resSP1)=>{
+                if(errSP1){
+                    console.log(errSP1)
+                    res.status(400).send(errSP1)
+                }
+                let result = []
+                let resultPR = resSP1
+                let resultName = []
+                let resultData =[]
+                let newDate = ""
+                let newNewDate =""
+                for(let i=0; i<resultPR.length;i++){
+                    newDate = resultPR[i].order_date.toString()
+                    newNewDate = newDate.slice(0,15)
+                    resultName.push(newNewDate)
+                    resultData.push(resultPR[i].total_Payment)
+                    newDate =""
+                    newNewDate = ""
+    
+                }
+                let fixDate1 = dateParcel1.split(/\D/g)
+                let trueDate1 = [fixDate1[2], fixDate1[1], fixDate1[0]].join("-")
+                let fixDate2 = dateParcel2.split(/\D/g)
+                let trueDate2 = [fixDate2[2], fixDate2[1], fixDate2[0]].join("-")
+                let date = `selama ${trueDate1} - ${trueDate2}`
+                result.push(resultPR,resultName, resultData, date )
+                res.status(200).send(result)
+            })
+        }
     }
 
 
