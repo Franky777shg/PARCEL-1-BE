@@ -87,4 +87,16 @@ module.exports = {
         });
     });
   },
+  removeProfilePhoto: (req, res) => {
+    const { idusers } = req.payload;
+    const removePhoto = `UPDATE profile SET avatar = null WHERE idusers = ${db.escape(
+      idusers
+    )}`;
+    db.query(removePhoto, (errRemovePhoto, resRemovePhoto) => {
+      if (errRemovePhoto) {
+        res.status(400).send(errRemovePhoto);
+      }
+      res.status(200).send("Foto berhasil dihapus");
+    });
+  },
 };
