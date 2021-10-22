@@ -1,5 +1,6 @@
 const { db } = require("../database");
 const SECRET_KEY = process.env.SECRET_KEY;
+const crypto = require("crypto");
 
 module.exports = {
   updateProfileData: (req, res) => {
@@ -17,7 +18,7 @@ module.exports = {
       if (errUpdateProfile) {
         return res.status(400).send(errUpdateProfile);
       }
-      console.log(resUpdateProfile);
+      // console.log(resUpdateProfile);
       const getNewProfileData = `SELECT * FROM profile  where idusers = ${db.escape(
         idusers
       )}`;
@@ -30,6 +31,60 @@ module.exports = {
           res.status(200).send(resGetNewProfileData[0]);
         }
       );
+    });
+  },
+  updateProfilePhoto: (req, res) => {
+    const { idusers } = req.payload;
+    console.log("req.file", req.file);
+
+    if (!req.file) {
+      res.status(400).send("NO FILE");
+    }
+
+    const updatePhoto = `UPDATE profile SET avatar = "uploads/avatar/${
+      res.file.filename
+    }" WHERE idusers = ${db.escape(idusers)}`;
+    db.query(updatePhoto, (errUpdatePhoto, resUpdatePhoto) => {
+      if (errUpdatePhoto) {
+        console.log(errUpdatePhoto);
+        res.status(400).send(errUpdatePhoto);
+      }
+
+      res.status(200).send(resUpdatePhoto);
+    });
+  },
+  changeProfilePassword: (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const { idusers } = req.payload;
+    // Hash password
+    const hashOldPassword = crypto
+      .createHmac("sha1", SECRET_KEY)
+      .update(oldPassword)
+      .digest("hex");
+    const hashNewPassword = crypto
+      .createHmac("sha1", SECRET_KEY)
+      .update(newPassword)
+      .digest("hex");
+    // Get old password query
+    const getOldPassword = `SELECT password FROM users WHERE idusers = ${db.escape(
+      idusers
+    )} `;
+    // Update new password query
+    const updateUsersPassword = `UPDATE users SET password=${db.escape(
+      hashNewPassword
+    )} WHERE idusers=${db.escape(idusers)}`;
+    db.query(getOldPassword, (errGetOldPassword, resGetOldPassword) => {
+      // console.log(resGetOldPassword[0].password);
+      if (errGetOldPassword)
+        return res.status(500).send("Terjadi kesalahan pada server!");
+      if (resGetOldPassword[0].password !== hashOldPassword)
+        return res.status(400).send("Password lama salah!");
+      if (resGetOldPassword[0].password === hashOldPassword)
+        return db.query(updateUsersPassword, (err, result) => {
+          if (err)
+            return res.status(500).send("Terjadi kesalahan pada server!");
+          res.status(200).send("Kata sandi anda berhasil diubah!");
+        });
     });
   },
 };
