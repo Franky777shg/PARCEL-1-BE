@@ -20,4 +20,9 @@ router.post(
   verifyToken,
   profileController.changeProfilePassword
 );
+router.put(
+  "/removeProfilePhoto",
+  verifyToken,
+  profileController.removeProfilePhoto
+);
 module.exports = router;
