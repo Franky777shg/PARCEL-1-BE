@@ -4,6 +4,7 @@ const homepageController = require("./homepageController");
 const transactionController = require("./transactionController");
 const profileController = require("./profileController");
 const adminRevenueController = require("./adminRevenueController");
+const adminTransactionController = require("./adminTransactionControllers");
 
 module.exports = {
   adminProductController,
@@ -11,5 +12,6 @@ module.exports = {
   homepageController,
   transactionController,
   profileController,
-  adminRevenueController
+  adminRevenueController,
+  adminTransactionController,
 };
