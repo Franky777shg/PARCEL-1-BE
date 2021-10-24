@@ -10,7 +10,7 @@ router.get(
   adminTransactionControllers.getTransactionDetail
 );
 router.get(
-  "/getTransactions",
+  "/getTransactions/:idOrderStatus",
   adminTransactionControllers.getTransactionsByStatus
 );
 

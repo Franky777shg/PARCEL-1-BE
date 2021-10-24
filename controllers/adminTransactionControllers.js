@@ -21,10 +21,11 @@ module.exports = {
   },
   // Get Transactions by Its Status
   getTransactionsByStatus: (req, res) => {
+    const { idOrderStatus } = req.params;
     const getTransactionStatus = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status from final_project.order o
     LEFT JOIN final_project.order_status s
     ON o.idorder_status = s.idorder_status
-    WHERE s.idorder_status = 3
+    WHERE s.idorder_status = ${idOrderStatus}
     ORDER BY idorder DESC;`;
     db.query(
       getTransactionStatus,
@@ -40,12 +41,13 @@ module.exports = {
   // Get Transaction Detail
   getTransactionDetail: (req, res) => {
     const { idOrder } = req.params;
-    const getOrderBio = `SELECT o.*, u.name, s.order_status FROM final_project.order o
-    LEFT JOIN final_project.profile u
-    ON o.idusers = u.idusers
-    LEFT JOIN final_project.order_status s
-    ON o.idorder_status = s.idorder_status
-    WHERE o.idorder = ${idOrder};`;
+    const getOrderBio = ` SELECT 
+    DATE_FORMAT(order_date,\'%Y-%m-%d\') as date_order, o.*, u.name, s.order_status FROM final_project.order o
+        LEFT JOIN final_project.profile u
+        ON o.idusers = u.idusers
+        LEFT JOIN final_project.order_status s
+        ON o.idorder_status = s.idorder_status
+        WHERE o.idorder =  ${idOrder};`;
 
     db.query(getOrderBio, (errGetOrderBio, resGetOrderBio) => {
       if (errGetOrderBio)
