@@ -21,11 +21,10 @@ module.exports = {
   },
   // Get Transactions by Its Status
   getTransactionsByStatus: (req, res) => {
-    const { idOrderStatus } = req.params;
     const getTransactionStatus = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status from final_project.order o
     LEFT JOIN final_project.order_status s
     ON o.idorder_status = s.idorder_status
-    WHERE s.idorder_status = ${db.escape(idOrderStatus)}
+    WHERE s.idorder_status = 3
     ORDER BY idorder DESC;`;
     db.query(
       getTransactionStatus,
