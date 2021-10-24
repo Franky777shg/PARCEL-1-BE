@@ -40,14 +40,13 @@ module.exports = {
   },
   // Get Transaction Detail
   getTransactionDetail: (req, res) => {
-    const { idorder } = req.params;
-
+    const { idOrder } = req.params;
     const getOrderBio = `SELECT o.*, u.name, s.order_status FROM final_project.order o
     LEFT JOIN final_project.profile u
     ON o.idusers = u.idusers
     LEFT JOIN final_project.order_status s
     ON o.idorder_status = s.idorder_status
-    WHERE o.idorder = ${idorder};`;
+    WHERE o.idorder = ${idOrder};`;
 
     db.query(getOrderBio, (errGetOrderBio, resGetOrderBio) => {
       if (errGetOrderBio)
@@ -58,6 +57,7 @@ module.exports = {
       const getOrderItems = `SELECT DISTINCT
         idorder_detail,
     parcel_name,
+    parcel_image,
     parcel_price,
         parcel_qty,
         GROUP_CONCAT(product_name SEPARATOR ';') as productNameList,
@@ -67,14 +67,35 @@ module.exports = {
         order_detail ode
     LEFT JOIN product_category pc ON ode.idproduct_category=pc.idproduct_category
     WHERE
-        idorder = ${idorder}
+        idorder = ${idOrder}
     GROUP BY idorder , idparcel , parcel_no;`;
       db.query(getOrderItems, (errGetOrderItems, resGetOrderItems) => {
         if (errGetOrderItems)
           return res.status(500).send("Terjadi kesalahan pada server");
         if (resGetOrderItems.length === 0)
           return res.status(400).send("Data transaksi tidak ditemukan!");
-        return res.status(200).send({ resGetOrderBio, resGetOrderItems });
+        const orderDetailItems = resGetOrderItems.map((orderDetail) => {
+          const productDetail = [];
+          const { productNameList, productCategory, productQtyList } =
+            orderDetail;
+          orderDetail.productNameList = productNameList
+            .split(";")
+            .map((product) => productDetail.push({ name: product }));
+          orderDetail.productCategory = productCategory
+            .split(",")
+            .map((category, idx) => (productDetail[idx].category = category));
+          orderDetail.productQtyList = productQtyList
+            .split(",")
+            .map((qty, idx) => (productDetail[idx].qty = parseInt(qty)));
+          delete orderDetail.productNameList;
+          delete orderDetail.productCategory;
+          delete orderDetail.productQtyList;
+          orderDetail.productDetail = productDetail;
+          return orderDetail;
+        });
+        return res
+          .status(200)
+          .send({ orderBio: resGetOrderBio[0], orderDetailItems });
       });
     });
   },
