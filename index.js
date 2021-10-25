@@ -29,7 +29,8 @@ const {
   homepageRouter,
   transactionRouter,
   profileRouter,
-  adminRevenueRouter
+  adminRevenueRouter,
+  adminTransactionRouter,
 } = require("./routers");
 // ROUTER
 app.use("/auth", authRouter);
@@ -38,6 +39,7 @@ app.use("/homepage", homepageRouter);
 app.use("/transaction", transactionRouter);
 app.use("/profile", profileRouter);
 app.use("/revenue", adminRevenueRouter);
+app.use("/adminTransaction", adminTransactionRouter);
 
 app.listen(PORT, () =>
   console.log(`Server is running at http://localhost:${PORT}/`)
