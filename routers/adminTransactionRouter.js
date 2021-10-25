@@ -13,5 +13,5 @@ router.get(
   "/getTransactions/:idOrderStatus",
   adminTransactionControllers.getTransactionsByStatus
 );
-
+router.put("/confirmPayment", adminTransactionControllers.confirmPayment);
 module.exports = router;

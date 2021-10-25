@@ -100,4 +100,14 @@ module.exports = {
       });
     });
   },
+  confirmPayment: (req, res) => {
+    const { idOrder, idOrderStatus } = req.body;
+    const confirmPayment = `UPDATE final_project.order SET idorder_status = ${idOrderStatus} WHERE idorder = ${idOrder};`;
+    db.query(confirmPayment, (errConfirmPayment, resConfirmPayment) => {
+      if (errConfirmPayment) {
+        res.status.send(errConfirmPayment);
+      }
+      res.status(200).send(resConfirmPayment);
+    });
+  },
 };
