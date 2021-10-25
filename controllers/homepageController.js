@@ -91,21 +91,35 @@ module.exports = {
 
     const parcelPerPage = 5;
 
+    const { idProductCategory } = req.body;
+
+    const listParentID = idProductCategory
+      .map((item, index) => {
+        if (index === 0) {
+          return `parentID = ${item}`;
+        }
+        return `OR parentID = ${item}`;
+      })
+      .join(" ");
+
     let totalParcels;
 
-    let countParcel = `SELECT COUNT(*) AS totalItems FROM parcel`;
+    let countParcel = `SELECT COUNT(*) AS totalItems from (SELECT DISTINCT p.* FROM final_project.parcel p
+      LEFT JOIN parcel_detail d
+      ON p.idparcel = d.idparcel
+      LEFT JOIN product_category c
+      ON d.idproduct_category = c.idproduct_category where ${listParentID} order by parcel_name ASC) AS Parcel;`;
     db.query(countParcel, (errCountParcel, resCountParcel) => {
       if (errCountParcel) {
-        res.status(400).send(errCountParcel);
+        res.status(400).send(errCountParcel.sqlMessage);
       }
       totalParcels = resCountParcel[0].totalItems;
-      //filter query
-      const { idProductCategory } = req.body;
+
       let getParcelFiltered = `SELECT DISTINCT p.* FROM final_project.parcel p
       LEFT JOIN parcel_detail d
       ON p.idparcel = d.idparcel
       LEFT JOIN product_category c
-      ON d.idproduct_category = c.idproduct_category WHERE parentID = ${idProductCategory} ORDER BY parcel_name ASC LIMIT ${db.escape(
+      ON d.idproduct_category = c.idproduct_category WHERE ${listParentID} ORDER BY parcel_name ASC LIMIT ${db.escape(
         parcelPerPage
       )} OFFSET ${db.escape((currentParcelPage - 1) * parcelPerPage)}`;
 
