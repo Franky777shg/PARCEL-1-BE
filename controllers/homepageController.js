@@ -16,7 +16,7 @@ module.exports = {
       }
       totalParcels = resCountParcel[0].totalItems;
 
-      let getParcel = `select * from parcel limit ${db.escape(
+      let getParcel = `select * from final_project.parcel order by parcel_name asc limit ${db.escape(
         parcelPerPage
       )} offset ${db.escape((currentParcelPage - 1) * parcelPerPage)}`;
 
