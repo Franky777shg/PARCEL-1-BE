@@ -5,5 +5,6 @@ const { homepageController } = require("../controllers/index");
 router.get("/getHomepage/:page", homepageController.getHomepagePagination);
 router.post("/sortParcel", homepageController.sortParcel);
 router.get("/parcelDetail/:idparcel", homepageController.getParcelDetail);
+router.post("/filterParcel", homepageController.filterParcel);
 
 module.exports = router;

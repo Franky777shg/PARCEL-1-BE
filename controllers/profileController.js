@@ -3,6 +3,7 @@ const SECRET_KEY = process.env.SECRET_KEY;
 const crypto = require("crypto");
 
 module.exports = {
+  //input and edit profile
   updateProfileData: (req, res) => {
     const { name, email, address, gender, age } = req.body;
     const { idusers } = req.payload;
@@ -19,7 +20,7 @@ module.exports = {
         return res.status(400).send(errUpdateProfile);
       }
       // console.log(resUpdateProfile);
-      const getNewProfileData = `SELECT * FROM profile  where idusers = ${db.escape(
+      const getNewProfileData = `SELECT * FROM profile WHERE idusers = ${db.escape(
         idusers
       )}`;
       db.query(
@@ -33,6 +34,7 @@ module.exports = {
       );
     });
   },
+  //upload profile photo
   updateProfilePhoto: (req, res) => {
     const { idusers } = req.payload;
     // console.log("req.file", req.file);
@@ -53,6 +55,7 @@ module.exports = {
       res.status(200).send({ avatar: req.file.filename });
     });
   },
+  //change password
   changeProfilePassword: (req, res) => {
     const { oldPassword, newPassword } = req.body;
     const { idusers } = req.payload;
@@ -87,6 +90,7 @@ module.exports = {
         });
     });
   },
+  //remove profile photo
   removeProfilePhoto: (req, res) => {
     const { idusers } = req.payload;
     const removePhoto = `UPDATE profile SET avatar = null WHERE idusers = ${db.escape(
