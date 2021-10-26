@@ -3,7 +3,7 @@ const { db } = require("../database");
 module.exports = {
   // Get All Transactions
   getAllTransactions: (req, res) => {
-    const getAllTransactions = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status from final_project.order o
+    const getAllTransactions = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status FROM final_project.order o
       LEFT JOIN final_project.order_status s
       ON o.idorder_status = s.idorder_status
       WHERE s.idorder_status > 1
@@ -22,7 +22,7 @@ module.exports = {
   // Get Transactions by Its Status
   getTransactionsByStatus: (req, res) => {
     const { idOrderStatus } = req.params;
-    const getTransactionStatus = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status from final_project.order o
+    const getTransactionStatus = `SELECT o.idorder, o.order_number, o.order_date, o.order_price, o.idorder_status, s.order_status FROM final_project.order o
     LEFT JOIN final_project.order_status s
     ON o.idorder_status = s.idorder_status
     WHERE s.idorder_status = ${idOrderStatus}
@@ -42,7 +42,7 @@ module.exports = {
   getTransactionDetail: (req, res) => {
     const { idOrder } = req.params;
     const getOrderBio = ` SELECT 
-    DATE_FORMAT(order_date,\'%Y-%m-%d\') as date_order, o.*, u.name, s.order_status FROM final_project.order o
+    DATE_FORMAT(order_date,\'%Y-%m-%d\') AS date_order, o.*, u.name, s.order_status FROM final_project.order o
         LEFT JOIN final_project.profile u
         ON o.idusers = u.idusers
         LEFT JOIN final_project.order_status s
