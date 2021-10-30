@@ -81,7 +81,7 @@ module.exports = {
               from: '"Admin ADJ Parcel" <adjparcel@gmail.com>', // sender address
               to: `${email}`, // list of receivers
               subject: `Verifikasi Akun untuk ${name}`, // Subject line
-              html: `<p>Halo ${name}!,</p><br/><a href="http://localhost:3000/verify/${token}">Klik disini untuk verifikasi akun anda!</a>`, // html body
+              html: `<p>Halo ${name}!,</p><br/><a href="https://parcel-1.purwadhikafs2.com/verify/${token}">Klik disini untuk verifikasi akun anda!</a>`, // html body
             })
 
             res
@@ -202,7 +202,7 @@ module.exports = {
         from: '"Admin ADJ Parcel" <adjparcel@gmail.com>', // sender address
         to: `${email}`, // list of receivers
         subject: `Permintaan Lupa Kata Sandi untuk akun ${name}`, // Subject line
-        html: `<p>Halo ${name}!, kamu baru saja meminta lupa kata sandi</p><br/><p>Link ini berlaku untuk 5 jam!</p><br /><a href="http://localhost:3000/reset-password/${token}">Klik disini untuk mereset ulang kata sandi anda!</a>`, // html body
+        html: `<p>Halo ${name}!, kamu baru saja meminta lupa kata sandi</p><br/><p>Link ini berlaku untuk 5 jam!</p><br /><a href="https://parcel-1.purwadhikafs2.com/reset-password/${token}">Klik disini untuk mereset ulang kata sandi anda!</a>`, // html body
       })
 
       res
